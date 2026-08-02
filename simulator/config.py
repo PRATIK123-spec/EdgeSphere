@@ -1,0 +1,7 @@
+SERVER = "http://127.0.0.1:8000"
+
+TELEMETRY_ENDPOINT = "/telemetry"
+
+NUMBER_OF_DEVICES = 10
+
+SEND_INTERVAL = 5
