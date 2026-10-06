@@ -1,38 +1,54 @@
+from contextlib import asynccontextmanager
+import asyncio
+
 from fastapi import FastAPI
 
-from app.database.base import Base
-from app.models.user import User
-from app.database.connection import engine
+from app.core.config import settings
+from app.models import Alert, Device, Telemetry, User
 from app.routers.auth import router as auth_router
-
-# Import models so SQLAlchemy knows about them
-from app.models.device import Device
-
 from app.routers.devices import router as device_router
 from app.routers.users import router as users_router
-from app.routers import telemetry
-from app.routers import analytics
-from app.routers import websocket
 from app.routers import alert
-# Create all database tables
-Base.metadata.create_all(bind=engine)
+from app.routers import analytics
+from app.routers import telemetry
+from app.routers import websocket
+from app.services import device_monitor
+
+_ = (User, Device, Telemetry, Alert)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    stop = asyncio.Event()
+    task = None
+
+    if settings.DEVICE_MONITOR_ENABLED:
+        task = asyncio.create_task(device_monitor.run_device_monitor(stop))
+
+    try:
+        yield
+    finally:
+        stop.set()
+        if task is not None:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
 
 app = FastAPI(
     title="EdgeSphere API",
     version="1.0.0",
-    description="Edge Device Management Platform"
+    description="Edge Device Management Platform",
+    lifespan=lifespan,
 )
 
-# Register routers
-
+app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(device_router)
-app.include_router(auth_router)
-app.include_router(
-    telemetry.router
-)
+app.include_router(telemetry.router)
 app.include_router(analytics.router)
-
 app.include_router(websocket.router)
 app.include_router(alert.router)
 

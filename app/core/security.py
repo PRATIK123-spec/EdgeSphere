@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.database.dependencies import get_db
+from app.models.user import User
 from app.repositories import user_repository
 
 password_hash = PasswordHash.recommended()
@@ -92,7 +93,6 @@ def get_current_user(
         )
 
     return user
-from app.models.user import User
 
 
 def admin_required(
