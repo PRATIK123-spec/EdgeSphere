@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.core.device_security import get_current_device
+from app.core.security import get_current_user
 from app.database.dependencies import get_db
+from app.models.device import Device
+from app.models.user import User
 from app.schemas.telemetry import (
     TelemetryCreate,
     TelemetryResponse,
@@ -15,31 +19,17 @@ router = APIRouter(
 
 
 @router.post(
-    "/{device_id}",
+    "/",
     response_model=TelemetryResponse
 )
 def create_telemetry(
-    device_id: int,
     telemetry: TelemetryCreate,
+    current_device: Device = Depends(get_current_device),
     db: Session = Depends(get_db),
 ):
     return telemetry_service.create_telemetry(
-        device_id,
+        current_device.id,
         telemetry,
-        db
-    )
-
-
-@router.get(
-    "/{device_id}",
-    response_model=list[TelemetryResponse]
-)
-def get_history(
-    device_id: int,
-    db: Session = Depends(get_db),
-):
-    return telemetry_service.get_history(
-        device_id,
         db
     )
 
@@ -51,19 +41,41 @@ def get_history(
 def get_latest(
     device_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return telemetry_service.get_latest(
         device_id,
-        db
+        db,
+        current_user
     )
 
 
-@router.delete("/{telemetry_id}")
+@router.get(
+    "/{device_id}",
+    response_model=list[TelemetryResponse]
+)
+def get_history(
+    device_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    return telemetry_service.get_history(
+        device_id,
+        db,
+        current_user
+    )
+
+
+@router.delete(
+    "/{telemetry_id}"
+)
 def delete_telemetry(
     telemetry_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return telemetry_service.delete(
         telemetry_id,
-        db
+        db,
+        current_user
     )

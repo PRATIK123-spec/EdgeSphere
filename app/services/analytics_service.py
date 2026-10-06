@@ -1,14 +1,23 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.models.user import User
 from app.repositories import analytics_repository
 from app.schemas.analytics import DeviceAnalyticsResponse
+from app.services.device_service import require_owned_device
 
 
 def get_device_analytics(
     device_id: int,
-    db: Session
+    db: Session,
+    current_user: User
 ):
+    require_owned_device(
+        device_id,
+        current_user,
+        db
+    )
+
     result = analytics_repository.get_device_analytics(
         device_id,
         db

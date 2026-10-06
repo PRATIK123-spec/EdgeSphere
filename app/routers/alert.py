@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.core.security import get_current_user
 from app.database.dependencies import get_db
+from app.models.user import User
 from app.schemas.alert import AlertResponse
 from app.services import alert_service
 
@@ -17,11 +19,13 @@ router = APIRouter(
 )
 def check_alerts(
     device_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return alert_service.check_device(
         device_id,
-        db
+        db,
+        current_user
     )
 
 
@@ -31,20 +35,24 @@ def check_alerts(
 )
 def get_alerts(
     device_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return alert_service.get_alerts(
         device_id,
-        db
+        db,
+        current_user
     )
 
 
 @router.delete("/{alert_id}")
 def delete_alert(
     alert_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ):
     return alert_service.delete(
         alert_id,
-        db
+        db,
+        current_user
     )

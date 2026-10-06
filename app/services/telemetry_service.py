@@ -2,17 +2,16 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models.telemetry import Telemetry
-from app.schemas.telemetry import TelemetryCreate
-
+from app.models.user import User
 from app.repositories import (
-    telemetry_repository,
     device_repository,
+    telemetry_repository,
 )
+from app.schemas.telemetry import TelemetryCreate
+from app.services.device_service import require_owned_device
+from app.services import alert_service
 
 
-# ----------------------------------------
-# Create Telemetry
-# ----------------------------------------
 def create_telemetry(
     device_id: int,
     telemetry_data: TelemetryCreate,
@@ -37,44 +36,63 @@ def create_telemetry(
         ram_usage=telemetry_data.ram_usage,
     )
 
-    return telemetry_repository.create_telemetry(
+    created = telemetry_repository.create_telemetry(
         telemetry,
         db
     )
 
+    device_repository.update_last_seen(
+        device,
+        db
+    )
 
-# ----------------------------------------
-# Get History
-# ----------------------------------------
+    alert_service.create_alerts_for_telemetry(
+        device_id,
+        created,
+        db
+    )
+
+    return created
+
+
 def get_history(
     device_id: int,
-    db: Session
+    db: Session,
+    current_user: User
 ):
+    require_owned_device(
+        device_id,
+        current_user,
+        db
+    )
+
     return telemetry_repository.get_device_history(
         device_id,
         db
     )
 
 
-# ----------------------------------------
-# Get Latest
-# ----------------------------------------
 def get_latest(
     device_id: int,
-    db: Session
+    db: Session,
+    current_user: User
 ):
+    require_owned_device(
+        device_id,
+        current_user,
+        db
+    )
+
     return telemetry_repository.get_latest(
         device_id,
         db
     )
 
 
-# ----------------------------------------
-# Delete Telemetry
-# ----------------------------------------
 def delete(
     telemetry_id: int,
-    db: Session
+    db: Session,
+    current_user: User
 ):
     telemetry = telemetry_repository.get_telemetry(
         telemetry_id,
@@ -86,6 +104,12 @@ def delete(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Telemetry not found"
         )
+
+    require_owned_device(
+        telemetry.device_id,
+        current_user,
+        db
+    )
 
     telemetry_repository.delete_telemetry(
         telemetry,

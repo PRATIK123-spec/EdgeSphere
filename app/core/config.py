@@ -13,6 +13,14 @@ class Settings(BaseSettings):
 
     DEBUG: bool = False
 
+    DEVICE_OFFLINE_AFTER_SECONDS: int = 60
+
+    DEVICE_MONITOR_INTERVAL_SECONDS: int = 15
+
+    DEVICE_MONITOR_ENABLED: bool = True
+
+    ALERT_COOLDOWN_SECONDS: int = 300
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True
