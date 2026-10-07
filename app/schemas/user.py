@@ -1,12 +1,18 @@
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StringConstraints
+
+from app.schemas.common import BoundedText
 
 
 class UserRegister(BaseModel):
-    email: EmailStr
-    password: str
-    full_name: str
+    model_config = ConfigDict(extra="forbid")
+
+    email: Annotated[EmailStr, Field(max_length=255)]
+    # Argon2 handles long inputs; the upper bound only stops abuse.
+    password: Annotated[str, StringConstraints(min_length=8, max_length=128)]
+    full_name: BoundedText(100)
 
 
 class Token(BaseModel):

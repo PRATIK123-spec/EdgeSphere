@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.models.user import User
 
@@ -8,8 +8,9 @@ def get_user_by_email(
     email: str,
     db: Session
 ):
+    # Case-insensitive (backed by the unique index on lower(email)).
     statement = select(User).where(
-        User.email == email
+        func.lower(User.email) == email.strip().lower()
     )
 
     result = db.execute(statement)

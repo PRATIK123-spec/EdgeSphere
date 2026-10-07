@@ -10,7 +10,10 @@ EXPECTED_DEVICE_COLUMNS = {
     "manufacturer",
     "model",
     "serial_number",
-    "device_key",
+    # Device keys are stored only as a SHA-256 hash plus a display prefix
+    # (plaintext "device_key" was removed by migration 0005).
+    "key_hash",
+    "key_prefix",
     "firmware_version",
     "status",
     "owner_id",
@@ -23,6 +26,7 @@ def test_orm_device_schema_has_no_obsolete_name_column():
     column_names = set(Device.__table__.columns.keys())
 
     assert "name" not in column_names
+    assert "device_key" not in column_names
     assert column_names == EXPECTED_DEVICE_COLUMNS
 
 

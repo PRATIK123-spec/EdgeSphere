@@ -59,12 +59,12 @@ def get_by_id_and_owner(
     return result.scalar_one_or_none()
 
 
-def get_by_device_key(
-    device_key: str,
+def get_by_key_hash(
+    key_hash: str,
     db: Session
 ):
     statement = select(Device).where(
-        Device.device_key == device_key
+        Device.key_hash == key_hash
     )
 
     result = db.execute(statement)
@@ -105,9 +105,10 @@ def delete_device(
 
 def update_last_seen(
     device: Device,
-    db: Session
+    db: Session,
+    seen_at=None
 ):
-    device.last_seen = utc_now()
+    device.last_seen = seen_at or utc_now()
     device.status = "Online"
 
     db.commit()
@@ -116,10 +117,14 @@ def update_last_seen(
     return device
 
 
-def mark_stale_online_devices_offline(
+def set_stale_online_devices_offline(
     db: Session,
     offline_after_seconds: int
-) -> int:
+) -> list[tuple[int, int, object]]:
+    """
+    Flip Online devices that have not reported within the window to Offline.
+    Returns (device_id, owner_id, last_seen) for every device that changed.
+    """
     cutoff = utc_now() - timedelta(seconds=offline_after_seconds)
 
     statement = (
@@ -129,9 +134,17 @@ def mark_stale_online_devices_offline(
             Device.last_seen < cutoff,
         )
         .values(status="Offline")
+        .returning(Device.id, Device.owner_id, Device.last_seen)
     )
 
-    result = db.execute(statement)
+    changed = [tuple(row) for row in db.execute(statement).all()]
     db.commit()
 
-    return result.rowcount or 0
+    return changed
+
+
+def mark_stale_online_devices_offline(
+    db: Session,
+    offline_after_seconds: int
+) -> int:
+    return len(set_stale_online_devices_offline(db, offline_after_seconds))

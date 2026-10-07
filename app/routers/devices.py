@@ -8,6 +8,7 @@ from app.schemas.device import (
     DeviceCreate,
     DeviceProvisionResponse,
     DeviceResponse,
+    DeviceUpdate,
 )
 from app.services import device_service
 
@@ -77,6 +78,42 @@ def update_device(
     return device_service.update_device(
         device_id,
         device,
+        db,
+        current_user
+    )
+
+
+@router.patch(
+    "/{device_id}",
+    response_model=DeviceResponse
+)
+def patch_device(
+    device_id: int,
+    device: DeviceUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return device_service.update_device(
+        device_id,
+        device,
+        db,
+        current_user
+    )
+
+
+@router.post(
+    "/{device_id}/rotate-key",
+    response_model=DeviceProvisionResponse
+)
+def rotate_device_key(
+    device_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Issue a new device key; the old key stops working immediately.
+    The new key is in this response only and can never be retrieved again."""
+    return device_service.rotate_device_key(
+        device_id,
         db,
         current_user
     )

@@ -3,6 +3,12 @@
 .env.*
 !.env.example
 
+# Database dumps and private keys (never commit)
+*.dump
+*.sql.gz
+*.pem
+*.key
+
 # Python virtual environments
 .venv/
 venv/

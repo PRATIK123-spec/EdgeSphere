@@ -6,6 +6,7 @@ from app.schemas.user import UserRegister
 from app.models.user import User
 from app.core.security import (
     hash_password,
+    verify_dummy_password,
     verify_password,
     create_access_token,
 )
@@ -31,7 +32,7 @@ def register_user(
     )
 
     new_user = User(
-        email=user_data.email,
+        email=user_data.email.lower(),
         hashed_password=hashed_password,
         full_name=user_data.full_name
     )
@@ -47,26 +48,32 @@ def login_user(
     password: str,
     db: Session
 ):
+    invalid = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid email or password",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
     user = user_repository.get_user_by_email(
         username,
         db
     )
 
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        # Same work as a real check, so timing does not reveal accounts.
+        verify_dummy_password(password)
+        raise invalid
 
     if not verify_password(
         password,
         user.hashed_password
     ):
+        raise invalid
+
+    if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-            headers={"WWW-Authenticate": "Bearer"},
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This account has been disabled",
         )
 
     access_token = create_access_token(
