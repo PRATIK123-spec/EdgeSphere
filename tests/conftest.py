@@ -1,4 +1,6 @@
-from sqlalchemy import create_engine
+from contextlib import contextmanager
+
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 from fastapi.testclient import TestClient
@@ -6,7 +8,7 @@ import pytest
 
 from app.core.config import settings
 from app.database.base import Base
-from app.database.dependencies import get_db
+from app.database.dependencies import get_db, get_session_factory
 from app.models import Alert, Device, Telemetry, User
 
 settings.DEVICE_MONITOR_ENABLED = False
@@ -23,6 +25,14 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
+
+# Enforce foreign keys (incl. ON DELETE CASCADE) like PostgreSQL does.
+@event.listens_for(engine, "connect")
+def _enable_sqlite_foreign_keys(dbapi_connection, _record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
 
 TestingSessionLocal = sessionmaker(
     bind=engine,
@@ -50,7 +60,14 @@ def client(db_session):
         finally:
             pass
 
+    @contextmanager
+    def shared_session():
+        # WebSocket auth uses short-lived sessions; in tests they share the
+        # single in-memory database session.
+        yield db_session
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_session_factory] = lambda: shared_session
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()

@@ -3,10 +3,12 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, Index, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
+from app.utils.time import utc_now
+from app.utils.device_identity import device_key_prefix, hash_device_key
 
 if TYPE_CHECKING:
     from app.models.user import User
@@ -16,6 +18,9 @@ if TYPE_CHECKING:
 
 class Device(Base):
     __tablename__ = "devices"
+    __table_args__ = (
+        Index("ix_devices_last_seen", "last_seen"),
+    )
 
     # ----------------------------------
     # Primary Key
@@ -84,12 +89,19 @@ class Device(Base):
     )
 
     # ----------------------------------
-    # Secret Device Authentication Key
-    # Never exposed publicly
+    # Device Authentication Key
+    # Only a SHA-256 hash of the key is stored (unique, used for lookup),
+    # plus a short non-secret prefix so owners can tell keys apart.
+    # The raw key is returned once at provisioning/rotation and never again.
     # ----------------------------------
-    device_key: Mapped[str] = mapped_column(
-        String(128),
+    key_hash: Mapped[str] = mapped_column(
+        String(64),
         unique=True,
+        nullable=False
+    )
+
+    key_prefix: Mapped[str] = mapped_column(
+        String(16),
         nullable=False
     )
 
@@ -118,7 +130,7 @@ class Device(Base):
     # Device Owner
     # ----------------------------------
     owner_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id"),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True
     )
@@ -129,12 +141,12 @@ class Device(Base):
 
     # ----------------------------------
     # Last Telemetry Timestamp
-    # Updated whenever telemetry arrives
+    # NULL until the device reports for the first time.
+    # Updated whenever telemetry arrives.
     # ----------------------------------
-    last_seen: Mapped[datetime] = mapped_column(
+    last_seen: Mapped[datetime | None] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
-        nullable=False
+        nullable=True
     )
 
     # ----------------------------------
@@ -142,19 +154,34 @@ class Device(Base):
     # ----------------------------------
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=utc_now,
         nullable=False
     )
 
     # ----------------------------------
     # Relationships
+    # Deletes cascade in the database (ON DELETE CASCADE); passive_deletes
+    # stops the ORM from loading every child row just to delete it.
     # ----------------------------------
     telemetry: Mapped[list["Telemetry"]] = relationship(
         back_populates="device",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        passive_deletes=True
     )
 
     alerts: Mapped[list["Alert"]] = relationship(
         back_populates="device",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        passive_deletes=True
     )
+
+    # ----------------------------------
+    # Write-only raw key setter
+    # `device.device_key = raw` stores the hash and prefix. There is no
+    # getter: a stored device can never yield its raw key.
+    # ----------------------------------
+    def _set_device_key(self, raw_key: str) -> None:
+        self.key_hash = hash_device_key(raw_key)
+        self.key_prefix = device_key_prefix(raw_key)
+
+    device_key = property(fset=_set_device_key)
