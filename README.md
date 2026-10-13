@@ -1,13 +1,65 @@
 # EdgeSphere
 
-IoT / edge infrastructure management platform: device provisioning, telemetry
-ingestion, alerting, analytics and real-time monitoring.
+**Full-stack IoT / edge device management platform: register devices, ingest telemetry, raise alerts, and monitor a fleet in real time.**
 
-- **Backend** — FastAPI · SQLAlchemy 2 · PostgreSQL · Alembic · JWT (users) ·
-  hashed per-device API keys (devices). Layering: Router → Service → Repository → SQLAlchemy.
-- **Frontend** — React · TypeScript · Vite · Tailwind · TanStack Query · Recharts (see `frontend/README.md`).
+<!-- Screenshot: add docs/dashboard.png and uncomment
+![EdgeSphere dashboard](docs/dashboard.png)
+-->
 
-## Quick start
+## Features
+
+- **Device management**: register, edit, and delete devices; each device gets a one-time API key (stored as a SHA-256 hash) that can be rotated
+- **Telemetry ingestion**: devices push temperature, battery, CPU, and RAM readings authenticated by `X-DEVICE-KEY`
+- **Alerting engine**: rule-based alerts (temperature > 70 °C, battery < 20 %, CPU/RAM > 90 %) with cooldown, severity, and an acknowledge → resolve lifecycle
+- **Real-time updates**: authenticated WebSocket pushes telemetry, device status, and alert events to the dashboard
+- **Offline detection**: a background monitor marks devices offline when they stop reporting
+- **Analytics & dashboard**: fleet summary, per-device insights, and down-sampled time series for charts
+- **Multi-tenant security**: JWT user auth; every query is scoped to the caller's own devices; no SQL or stack traces leak to clients
+- **Device simulator**: spins up multiple virtual devices that stream realistic sensor data
+
+## Architecture
+
+```
+ Devices / simulator ──HTTP (X-DEVICE-KEY)──►┐
+                                             │   FastAPI backend
+ React dashboard ──HTTP (JWT)──────────────► │   Router → Service → Repository → SQLAlchemy ──► PostgreSQL
+        ▲                                    │        │
+        └────────── WebSocket /ws ◄──────────┘   realtime hub (events) + device monitor (background task)
+```
+
+## Tech Stack
+
+| Layer | Technologies |
+|---|---|
+| Backend | Python 3.12, FastAPI, SQLAlchemy 2, Alembic, Pydantic v2, PyJWT, Uvicorn |
+| Database | PostgreSQL (SQLite in-memory for tests) |
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS, TanStack Query, Recharts, React Hook Form + Zod, shadcn/Radix UI |
+| Testing | pytest, FastAPI TestClient |
+| Deployment | Render (backend + Postgres via `render.yaml`), Vercel (frontend) |
+
+## Project Structure
+
+```
+EdgeSphere/
+├── app/
+│   ├── core/           # settings, JWT and device-key security
+│   ├── database/       # engine, session, dependencies
+│   ├── models/         # SQLAlchemy models: User, Device, Telemetry, Alert
+│   ├── schemas/        # Pydantic request/response models
+│   ├── repositories/   # data access layer
+│   ├── services/       # business logic (alerts, analytics, device monitor, ...)
+│   ├── routers/        # REST + WebSocket endpoints
+│   ├── realtime/       # in-process WebSocket event hub
+│   └── main.py         # app factory, lifespan, error handlers
+├── alembic/            # database migrations
+├── frontend/           # React + TypeScript dashboard (see frontend/README.md)
+├── simulator/          # virtual devices that stream telemetry
+├── tests/              # pytest suite
+├── render.yaml         # Render blueprint
+└── requirements.txt
+```
+
+## Setup & Installation
 
 ```bash
 python -m venv venv && source venv/bin/activate
@@ -79,7 +131,7 @@ every 30 s. Close codes: `4401` invalid/expired token (do not retry with it),
 The connection hub is in-process: run a single API worker, or put a shared
 broker (e.g. Redis pub/sub) behind `app/realtime/hub.py` before scaling out.
 
-## Tests
+## Testing
 
 ```bash
 pytest -q
@@ -91,3 +143,17 @@ EDGESPHERE_MIGRATION_TEST_PG_URL=postgresql+psycopg://user:pass@localhost:5432/p
 
 Register devices in the UI, put their keys in `simulator/device_manager.py`
 (never commit real keys), then run `python -m simulator.device_manager`.
+
+## Results
+
+- **75 tests passing** (4 PostgreSQL-only migration tests skip without a database), covering auth, device keys, device management, telemetry pagination and series, the alert lifecycle, analytics, the dashboard, the offline monitor, and the WebSocket protocol.
+
+## Future Work
+
+- Replace the in-process WebSocket hub with a shared broker (e.g. Redis pub/sub) so the API can run multiple workers
+- Load simulator device keys from environment variables instead of `simulator/device_manager.py`
+- Make alert thresholds configurable per device
+
+## License
+
+Released under the [MIT License](LICENSE).
