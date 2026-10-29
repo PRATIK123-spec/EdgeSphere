@@ -94,7 +94,7 @@ export function AlertList({
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <SeverityBadge severity={alert.severity} />
                 <span className="text-sm font-medium">{type.label}</span>
-                {!compact && <AlertStatusBadge status={alert.status} />}
+                {(!compact || actions) && <AlertStatusBadge status={alert.status} />}
                 {!compact && <span className="font-mono text-[11px] text-muted-foreground">#{alert.id}</span>}
               </div>
               <p className="mt-1 text-sm text-pretty text-muted-foreground">{alert.message}</p>

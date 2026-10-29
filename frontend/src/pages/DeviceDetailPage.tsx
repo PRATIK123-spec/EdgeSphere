@@ -91,19 +91,22 @@ export function DeviceDetailPage() {
       <BackLink />
 
       <PageHeader
-        eyebrow={`${device.device_type} · ${device.manufacturer}`}
         title={
-          <span className="flex flex-wrap items-center gap-3">
-            {device.display_name}
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <span className="min-w-0 truncate">{device.display_name}</span>
             <StatusBadge status={device.status} showIcon />
           </span>
         }
         description={
-          <>
-            <span className="font-mono text-xs">{device.serial_number}</span>
-            <span className="mx-2 text-border">|</span>
-            Last seen <TimeAgo value={device.last_seen} fallback="never" />
-          </>
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <span>
+              <span className="capitalize">{device.device_type}</span> · {device.manufacturer} {device.model}
+            </span>
+            <span className="text-id text-muted-foreground/80">{device.serial_number}</span>
+            <span>
+              Last seen <TimeAgo value={device.last_seen} fallback="never" />
+            </span>
+          </span>
         }
         actions={
           <>
@@ -143,10 +146,16 @@ export function DeviceDetailPage() {
               <LatestReadingPanel deviceId={device.id} />
               <AlertsBreachWatcher deviceId={device.id} />
               <TelemetryTrendCard deviceId={device.id} onViewHistory={() => setTab('telemetry')} />
+              <RecentAlertsCard
+                deviceId={device.id}
+                status={['active', 'acknowledged']}
+                context="Unresolved alerts for this device"
+                limit={4}
+                actions
+              />
             </div>
             <div className="space-y-6">
               <DeviceSpecs device={device} />
-              <RecentAlertsCard deviceId={device.id} context="Newest alerts for this device" limit={4} />
             </div>
           </div>
         </TabsContent>
@@ -170,8 +179,7 @@ export function DeviceDetailPage() {
 function DeviceSpecs({ device }: { device: DeviceResponse }) {
   const rows: { label: string; value: ReactNode; mono?: boolean }[] = [
     { label: 'Device ID', value: device.id, mono: true },
-    { label: 'Display name', value: device.display_name || '—' },
-    { label: 'Type', value: device.device_type },
+    { label: 'Type', value: <span className="capitalize">{device.device_type}</span> },
     { label: 'Manufacturer', value: device.manufacturer },
     { label: 'Model', value: device.model },
     { label: 'Serial number', value: device.serial_number, mono: true },

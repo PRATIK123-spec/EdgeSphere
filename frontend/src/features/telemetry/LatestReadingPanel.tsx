@@ -32,7 +32,7 @@ export function LatestReadingPanel({ deviceId }: { deviceId: number }) {
             Latest reading
           </h2>
           <p className="text-xs text-muted-foreground">
-            Polled every {LIVE_POLL_MS / 1000}s from the most recent telemetry record
+            Most recent telemetry record, checked every {LIVE_POLL_MS / 1000}s. Ticks mark alert thresholds.
           </p>
         </div>
         {reading && (
@@ -84,17 +84,24 @@ export function LatestReadingPanel({ deviceId }: { deviceId: number }) {
                     <AlertTriangle className="size-3.5 text-status-critical" aria-label="Threshold breached" />
                   )}
                 </div>
-                <div className="tabular mt-2 text-2xl font-semibold tracking-tight">
+                <div className="text-metric mt-2 text-2xl leading-8">
                   {formatNumber(value)}
                   <span className="ml-1 text-sm font-normal text-muted-foreground">{metric.unit}</span>
                 </div>
-                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden="true">
-                  <div
-                    className={cn(
-                      'h-full rounded-full transition-[width] duration-700',
-                      breached ? 'bg-status-critical' : 'bg-primary/70',
-                    )}
-                    style={{ width: `${meterPercent(value)}%` }}
+                {/* 0–100 scale with a tick at the alert threshold */}
+                <div className="relative mt-3" aria-hidden="true">
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={cn(
+                        'h-full rounded-full transition-[width] duration-700',
+                        breached ? 'bg-status-critical' : 'bg-primary/70',
+                      )}
+                      style={{ width: `${meterPercent(value)}%` }}
+                    />
+                  </div>
+                  <span
+                    className="absolute -top-1 h-3.5 w-0.5 -translate-x-1/2 rounded-full bg-foreground/60"
+                    style={{ left: `${meterPercent(metric.threshold)}%` }}
                   />
                 </div>
                 <div className={cn('mt-2 text-[11px]', breached ? 'text-status-critical' : 'text-muted-foreground')}>

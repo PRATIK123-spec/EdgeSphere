@@ -20,6 +20,7 @@ export function RecentAlertsCard({
   context,
   limit = 5,
   status,
+  actions = false,
   className,
 }: {
   /** One device, or undefined for the whole fleet. */
@@ -29,6 +30,8 @@ export function RecentAlertsCard({
   context: ReactNode
   limit?: number
   status?: AlertStatus[]
+  /** Show Acknowledge / Resolve on each alert. */
+  actions?: boolean
   className?: string
 }) {
   const query = useAlerts({ device_id: deviceId, status, limit })
@@ -74,7 +77,7 @@ export function RecentAlertsCard({
             <p className="text-xs text-muted-foreground">No unresolved threshold breaches.</p>
           </div>
         ) : (
-          <AlertList alerts={query.data.items} devices={devicesById} compact />
+          <AlertList alerts={query.data.items} devices={devicesById} compact actions={actions} />
         )}
       </div>
 
