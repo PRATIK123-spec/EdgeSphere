@@ -7,6 +7,7 @@ export function loginRequest(email: string, password: string): Promise<Token> {
     method: 'POST',
     auth: false,
     body: { form: { username: email, password } },
+    retryOnColdStart: true,
   })
 }
 
@@ -16,6 +17,8 @@ export function registerRequest(data: UserRegister): Promise<UserResponse> {
     method: 'POST',
     auth: false,
     body: { json: data },
+    // Safe to retry: a duplicate is rejected with 409, which AuthProvider resolves by signing in.
+    retryOnColdStart: true,
   })
 }
 

@@ -9,7 +9,7 @@ import { AuthLayout } from '@/features/auth/AuthLayout'
 import { useAuth } from '@/features/auth/auth-context'
 import { FormField, PasswordField } from '@/components/common/FormField'
 import { loginSchema, type LoginValues } from '@/features/auth/schemas'
-import { getErrorMessage, isApiError } from '@/lib/api-client'
+import { getErrorMessage, isApiError, isColdStartError } from '@/lib/api-client'
 
 export function LoginPage() {
   const { login } = useAuth()
@@ -34,7 +34,9 @@ export function LoginPage() {
         setError('password', { message: 'Invalid email or password' })
         return
       }
-      toast.error('Sign in failed', { description: getErrorMessage(error) })
+      toast.error(isColdStartError(error) ? 'Could not reach the server' : 'Sign in failed', {
+        description: getErrorMessage(error),
+      })
     }
   })
 

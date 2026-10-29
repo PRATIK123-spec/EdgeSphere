@@ -1,5 +1,6 @@
 import type { ApiErrorBody, Page, ValidationErrorItem } from '@/types/api'
 import { clearSession, getToken } from '@/lib/auth-storage'
+import { markServerAwake, markServerWaking, serverMayBeAsleep } from '@/lib/server-wake'
 
 /**
  * All requests go to `/api/*`. In development the Vite proxy strips the
@@ -22,6 +23,14 @@ export class ApiError extends Error {
 
 export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError
+}
+
+/**
+ * Network failure or gateway 502/503/504: what a cold-starting Render
+ * instance (or a stopped dev server) looks like from the browser.
+ */
+export function isColdStartError(error: unknown): boolean {
+  return isApiError(error) && (error.status === 0 || error.status === 502 || error.status === 503 || error.status === 504)
 }
 
 // --------------------------------------------------- unauthorized handling
@@ -51,6 +60,31 @@ export interface RequestOptions {
   /** Attach the user JWT. Defaults to true. */
   auth?: boolean
   signal?: AbortSignal
+  /**
+   * Retry with backoff (~1 min total) while the server is cold-starting.
+   * Defaults to true for GET only; set it for writes that are idempotent.
+   */
+  retryOnColdStart?: boolean
+}
+
+/** Backoff between cold-start retries: 1+2+4+8+15+15+15 ≈ 60 s. */
+const COLD_START_DELAYS_MS = [1_000, 2_000, 4_000, 8_000, 15_000, 15_000, 15_000]
+/** A request still pending after this, on a server that may be asleep, counts as a wake-up. */
+const SLOW_REQUEST_MS = 4_000
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason)
+    const timer = setTimeout(resolve, ms)
+    signal?.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer)
+        reject(signal.reason)
+      },
+      { once: true },
+    )
+  })
 }
 
 function parseErrorBody(status: number, body: ApiErrorBody | null): ApiError {
@@ -120,6 +154,32 @@ async function apiRequestWithResponse<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<{ data: T; headers: Headers }> {
+  const retry = options.retryOnColdStart ?? (options.method ?? 'GET') === 'GET'
+  for (let attempt = 0; ; attempt++) {
+    // Flag a likely wake-up if the request is slow and the server may have been asleep.
+    const slowTimer = setTimeout(() => {
+      if (serverMayBeAsleep()) markServerWaking()
+    }, SLOW_REQUEST_MS)
+    try {
+      const result = await attemptRequest<T>(path, options)
+      markServerAwake()
+      return result
+    } catch (error) {
+      if (!isColdStartError(error)) {
+        if (isApiError(error)) markServerAwake() // a real HTTP answer: the server is up
+        throw error
+      }
+      markServerWaking()
+      const delay = COLD_START_DELAYS_MS[attempt]
+      if (!retry || delay === undefined) throw error
+      await sleep(delay, options.signal)
+    } finally {
+      clearTimeout(slowTimer)
+    }
+  }
+}
+
+async function attemptRequest<T>(path: string, options: RequestOptions): Promise<{ data: T; headers: Headers }> {
   const { method = 'GET', body, auth = true, signal } = options
   const headers = new Headers({ Accept: 'application/json' })
 
@@ -182,6 +242,9 @@ function safeJson(text: string): ApiErrorBody | null {
 
 /** Human-readable message for any thrown value. */
 export function getErrorMessage(error: unknown): string {
+  if (isColdStartError(error)) {
+    return 'The server is still waking up. It can take up to a minute after a quiet period; try again shortly.'
+  }
   if (isApiError(error)) return error.message
   if (error instanceof Error) return error.message
   return 'Something went wrong.'

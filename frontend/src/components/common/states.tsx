@@ -1,10 +1,10 @@
-import type { ReactNode } from 'react'
-import { AlertOctagon, Inbox, Loader2, RotateCw, WifiOff, type LucideIcon } from 'lucide-react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { AlertOctagon, Hourglass, Inbox, Loader2, RotateCw, WifiOff, type LucideIcon } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LogoMark } from '@/components/common/Logo'
-import { getErrorMessage, isApiError } from '@/lib/api-client'
+import { getErrorMessage, isColdStartError } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 
 // ------------------------------------------------------------------ empty
@@ -43,6 +43,8 @@ export function EmptyState({
 
 // ------------------------------------------------------------------ error
 
+const AUTO_RETRY_S = 15
+
 export function ErrorState({
   error,
   title,
@@ -56,33 +58,76 @@ export function ErrorState({
   className?: string
   compact?: boolean
 }) {
-  const offline = isApiError(error) && error.status === 0
-  const Icon = offline ? WifiOff : AlertOctagon
-  const heading = title ?? (offline ? 'API unreachable' : 'Something went wrong')
+  const browserOffline = typeof navigator !== 'undefined' && !navigator.onLine
+  const coldStart = isColdStartError(error) && !browserOffline
+  const Icon = browserOffline ? WifiOff : coldStart ? Hourglass : AlertOctagon
+  const heading =
+    title ?? (browserOffline ? 'You are offline' : coldStart ? 'The server is still waking up' : 'Something went wrong')
+  const message = browserOffline
+    ? 'Check your network connection, then try again.'
+    : coldStart
+      ? 'It sleeps when idle and can take up to a minute to respond. This retries on its own.'
+      : getErrorMessage(error)
 
   return (
     <div
       role="alert"
       className={cn(
-        'flex flex-col items-center justify-center rounded-xl border border-destructive/25 bg-destructive/5 px-6 text-center',
+        'flex flex-col items-center justify-center rounded-xl border px-6 text-center',
+        coldStart ? 'border-status-warning/30 bg-status-warning/5' : 'border-destructive/25 bg-destructive/5',
         compact ? 'py-8' : 'py-14',
         className,
       )}
     >
-      <div className="mb-4 flex size-12 items-center justify-center rounded-xl border border-destructive/30 bg-destructive/10">
-        <Icon className="size-5 text-destructive" aria-hidden="true" />
+      <div
+        className={cn(
+          'mb-4 flex size-12 items-center justify-center rounded-xl border',
+          coldStart ? 'border-status-warning/40 bg-status-warning/10' : 'border-destructive/30 bg-destructive/10',
+        )}
+      >
+        <Icon className={cn('size-5', coldStart ? 'text-status-warning' : 'text-destructive')} aria-hidden="true" />
       </div>
       <h3 className="text-sm font-semibold">{heading}</h3>
-      <p className="mt-1.5 max-w-md text-sm text-pretty text-muted-foreground">
-        {getErrorMessage(error)}
-      </p>
-      {onRetry && (
-        <Button variant="outline" size="sm" className="mt-5" onClick={onRetry}>
-          <RotateCw aria-hidden="true" />
-          Try again
-        </Button>
-      )}
+      <p className="mt-1.5 max-w-md text-sm text-pretty text-muted-foreground">{message}</p>
+      {onRetry &&
+        (coldStart ? (
+          <AutoRetryButton onRetry={onRetry} />
+        ) : (
+          <Button variant="outline" size="sm" className="mt-5" onClick={onRetry}>
+            <RotateCw aria-hidden="true" />
+            Try again
+          </Button>
+        ))}
     </div>
+  )
+}
+
+/**
+ * Cold starts usually finish within a minute, so retry on a timer as well as
+ * on click. Callers pass inline callbacks; the latest is kept in a ref.
+ */
+function AutoRetryButton({ onRetry }: { onRetry: () => void }) {
+  const retryRef = useRef(onRetry)
+  useEffect(() => {
+    retryRef.current = onRetry
+  })
+  const [startedAt] = useState(() => Date.now())
+  const [now, setNow] = useState(startedAt)
+  useEffect(() => {
+    const tick = window.setInterval(() => setNow(Date.now()), 1_000)
+    const retry = window.setInterval(() => retryRef.current(), AUTO_RETRY_S * 1_000)
+    return () => {
+      window.clearInterval(tick)
+      window.clearInterval(retry)
+    }
+  }, [])
+  const countdown = AUTO_RETRY_S - (Math.floor((now - startedAt) / 1000) % AUTO_RETRY_S)
+
+  return (
+    <Button variant="outline" size="sm" className="mt-5" onClick={onRetry}>
+      <RotateCw aria-hidden="true" />
+      Try again now <span className="font-mono tabular-nums text-muted-foreground">· auto in {countdown}s</span>
+    </Button>
   )
 }
 

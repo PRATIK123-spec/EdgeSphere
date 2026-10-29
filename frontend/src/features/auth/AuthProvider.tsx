@@ -90,11 +90,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(
     async (values: RegisterValues): Promise<UserResponse> => {
-      await registerRequest({
-        email: values.email,
-        password: values.password,
-        full_name: values.full_name.trim(),
-      })
+      try {
+        await registerRequest({
+          email: values.email,
+          password: values.password,
+          full_name: values.full_name.trim(),
+        })
+      } catch (error) {
+        // A cold-start retry can land after an earlier attempt already created
+        // the account. If these credentials sign in, it is this user's account.
+        if (!(isApiError(error) && error.status === 409)) throw error
+        try {
+          return await login(values.email, values.password)
+        } catch {
+          throw error
+        }
+      }
       return login(values.email, values.password)
     },
     [login],

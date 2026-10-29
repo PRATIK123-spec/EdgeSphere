@@ -1,5 +1,5 @@
 import { QueryClient, type QueryKey } from '@tanstack/react-query'
-import { isApiError } from '@/lib/api-client'
+import { isApiError, isColdStartError } from '@/lib/api-client'
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -9,6 +9,7 @@ export const queryClient = new QueryClient({
       // Retry transient/network failures, never client errors (4xx).
       retry: (failureCount, error) => {
         if (isApiError(error) && error.status >= 400 && error.status < 500) return false
+        if (isColdStartError(error)) return false
         return failureCount < 2
       },
     },

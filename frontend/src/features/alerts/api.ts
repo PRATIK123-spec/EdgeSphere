@@ -23,10 +23,10 @@ export function fetchAlerts(params: AlertQueryParams, signal?: AbortSignal): Pro
 
 /** POST /alerts/{id}/acknowledge — active → acknowledged (idempotent; 409 if resolved). */
 export function acknowledgeAlert(id: number): Promise<AlertResponse> {
-  return apiRequest<AlertResponse>(`/alerts/${id}/acknowledge`, { method: 'POST' })
+  return apiRequest<AlertResponse>(`/alerts/${id}/acknowledge`, { method: 'POST', retryOnColdStart: true })
 }
 
 /** POST /alerts/{id}/resolve — active/acknowledged → resolved (idempotent). */
 export function resolveAlert(id: number): Promise<AlertResponse> {
-  return apiRequest<AlertResponse>(`/alerts/${id}/resolve`, { method: 'POST' })
+  return apiRequest<AlertResponse>(`/alerts/${id}/resolve`, { method: 'POST', retryOnColdStart: true })
 }
