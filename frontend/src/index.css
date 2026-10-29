@@ -52,6 +52,21 @@
   --sidebar-accent-foreground: oklch(0.2 0.015 255);
 
   --grid-line: oklch(0.2 0.015 255 / 0.05);
+
+  --surface-raised: oklch(1 0 0);
+  --border-strong: oklch(0.84 0.01 250);
+
+  /* Elevation (light) */
+  --shadow-1: 0 1px 2px oklch(0.2 0.015 255 / 0.06);
+  --shadow-2: 0 2px 8px oklch(0.2 0.015 255 / 0.08);
+  --shadow-3: 0 10px 28px oklch(0.2 0.015 255 / 0.12);
+
+  /* Chart series — dataviz-validated categorical palette (light surface) */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
 }
 
 /* ------------------------------------------------------------------
@@ -89,6 +104,21 @@
   --sidebar-accent-foreground: oklch(0.97 0.006 250);
 
   --grid-line: oklch(1 0 0 / 0.035);
+
+  --surface-raised: oklch(0.23 0.015 255);
+  --border-strong: oklch(1 0 0 / 0.14);
+
+  /* Elevation (dark) — depth carries weight; borders carry the rest */
+  --shadow-1: 0 1px 2px oklch(0 0 0 / 0.3);
+  --shadow-2: 0 4px 14px oklch(0 0 0 / 0.42);
+  --shadow-3: 0 14px 36px oklch(0 0 0 / 0.55);
+
+  /* Chart series — dataviz-validated categorical palette (dark surface) */
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
 }
 
 @theme inline {
@@ -99,6 +129,7 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -119,10 +150,19 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
+  --color-surface-raised: var(--surface-raised);
+  --color-border-strong: var(--border-strong);
+
   --color-status-online: var(--status-online);
   --color-status-offline: var(--status-offline);
   --color-status-warning: var(--status-warning);
   --color-status-critical: var(--status-critical);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
 
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
@@ -175,6 +215,42 @@
       color-mix(in oklch, var(--foreground) 3%, transparent),
       transparent 60%
     );
+  }
+
+  /* Elevation scale — reads on both light and dark surfaces */
+  .elevation-1 { box-shadow: var(--shadow-1); }
+  .elevation-2 { box-shadow: var(--shadow-2); }
+  .elevation-3 { box-shadow: var(--shadow-3); }
+
+  /* Type scale — numbers, metrics and IDs in JetBrains Mono, tabular */
+  .text-channel-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-muted-foreground);
+  }
+  .text-metric {
+    font-family: var(--font-mono);
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .text-metric-lg {
+    font-family: var(--font-mono);
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .text-id {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    line-height: 1rem;
   }
 }
 

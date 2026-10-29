@@ -29,7 +29,7 @@ export function EmptyState({
         className,
       )}
     >
-      <div className="mb-4 flex size-12 items-center justify-center rounded-xl border bg-card shadow-sm">
+      <div className="elevation-1 mb-4 flex size-12 items-center justify-center rounded-xl border bg-card">
         <Icon className="size-5 text-muted-foreground" aria-hidden="true" />
       </div>
       <h3 className="text-sm font-semibold">{title}</h3>

@@ -7,10 +7,34 @@ import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/
 import { useAuth } from '@/features/auth/auth-context'
 import { RegisterDeviceProvider } from '@/features/devices/RegisterDeviceProvider'
 import { RealtimeProvider } from '@/features/realtime/RealtimeProvider'
+import { cn } from '@/lib/utils'
+
+const COLLAPSED_KEY = 'edgesphere.sidebar-collapsed'
+
+function readCollapsed(): boolean {
+  try {
+    return localStorage.getItem(COLLAPSED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(readCollapsed)
   const { expireSession } = useAuth()
+
+  const toggleCollapsed = () => {
+    setCollapsed((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem(COLLAPSED_KEY, next ? '1' : '0')
+      } catch {
+        // Preference only; ignore storage failures.
+      }
+      return next
+    })
+  }
 
   return (
     <RealtimeProvider onSessionRejected={expireSession}>
@@ -22,7 +46,7 @@ export function AppShell() {
           Skip to content
         </a>
 
-        <Sidebar />
+        <Sidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
 
         <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
           <SheetContent side="left" className="w-72 border-sidebar-border bg-sidebar p-0">
@@ -32,7 +56,12 @@ export function AppShell() {
           </SheetContent>
         </Sheet>
 
-        <div className="flex min-h-svh flex-col lg:pl-64">
+        <div
+          className={cn(
+            'flex min-h-svh min-w-0 flex-col transition-[padding] duration-200',
+            collapsed ? 'lg:pl-16' : 'lg:pl-64',
+          )}
+        >
           <Topbar onOpenMenu={() => setMobileNavOpen(true)} />
           <main id="main" className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
             <div className="mx-auto w-full max-w-7xl">

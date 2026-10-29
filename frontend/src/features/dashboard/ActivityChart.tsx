@@ -32,11 +32,11 @@ export function ActivityChart({ hourly }: { hourly: DashboardSummary['telemetry'
 
   return (
     <div
-      className="h-40 w-full"
+      className="h-48 w-full"
       role="img"
       aria-label={`Telemetry readings per hour over the last 24 hours: ${formatNumber(total, 0)} in total`}
     >
-      <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 480, height: 160 }}>
+      <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 480, height: 192 }}>
         <BarChart data={data} margin={{ top: 6, right: 4, bottom: 0, left: -18 }} barCategoryGap={2}>
           <CartesianGrid vertical={false} stroke="var(--border)" />
           <XAxis

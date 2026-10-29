@@ -9,6 +9,7 @@ export function StatTile({
   hint,
   accent,
   className,
+  children,
 }: {
   label: string
   value: ReactNode
@@ -17,11 +18,13 @@ export function StatTile({
   /** Tailwind classes for the icon chip, e.g. status colour. */
   accent?: string
   className?: string
+  /** Extra content under the hint, e.g. a meter. */
+  children?: ReactNode
 }) {
   return (
     <div className={cn('surface relative overflow-hidden p-4', className)}>
       <div className="flex items-start justify-between gap-3">
-        <span className="font-mono text-[11px] font-medium tracking-[0.12em] text-muted-foreground uppercase">
+        <span className="text-channel-label">
           {label}
         </span>
         <span
@@ -33,8 +36,9 @@ export function StatTile({
           <Icon className="size-3.5" aria-hidden="true" />
         </span>
       </div>
-      <div className="tabular mt-2 text-3xl font-semibold tracking-tight">{value}</div>
+      <div className="text-metric mt-2">{value}</div>
       {hint && <div className="mt-1.5 text-xs text-muted-foreground">{hint}</div>}
+      {children}
     </div>
   )
 }

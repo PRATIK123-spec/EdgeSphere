@@ -1,9 +1,10 @@
 import { Link, useLocation } from 'react-router'
-import { LogOut, Menu, ShieldCheck, UserRound } from 'lucide-react'
+import { ChevronRight, LogOut, Menu, ShieldCheck, UserRound } from 'lucide-react'
 
 import { ThemeToggle } from '@/components/common/ThemeToggle'
+import { ApiStatusIndicator } from '@/components/layout/ApiStatusIndicator'
 import { LiveIndicator } from '@/components/layout/LiveIndicator'
-import { routeTitle } from '@/components/layout/nav-items'
+import { routeMeta } from '@/components/layout/nav-items'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -20,25 +21,37 @@ import { initials } from '@/lib/format'
 export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const { user, logout } = useAuth()
   const { pathname } = useLocation()
+  const { group, title } = routeMeta(pathname)
 
   return (
-    <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b bg-background/80 px-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 sm:px-6">
+    <header className="sticky top-0 z-20 flex h-16 items-center gap-2 border-b bg-background/80 px-3 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 sm:gap-3 sm:px-6 lg:px-8">
       <Button
         variant="ghost"
         size="icon"
-        className="lg:hidden"
+        className="-ml-1 lg:hidden"
         onClick={onOpenMenu}
         aria-label="Open navigation"
       >
         <Menu aria-hidden="true" />
       </Button>
 
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-medium">{routeTitle(pathname)}</div>
-      </div>
+      <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
+        <ol className="flex min-w-0 items-center gap-1.5 text-sm">
+          {group && (
+            <li className="hidden items-center gap-1.5 text-muted-foreground sm:flex">
+              {group}
+              <ChevronRight className="size-3.5 opacity-60" aria-hidden="true" />
+            </li>
+          )}
+          <li className="truncate font-medium" aria-current="page">
+            {title}
+          </li>
+        </ol>
+      </nav>
 
-      <div className="flex items-center gap-1">
-        <LiveIndicator className="mr-1" />
+      <div className="flex items-center gap-1 sm:gap-1.5">
+        <ApiStatusIndicator variant="pill" className="lg:hidden" />
+        <LiveIndicator />
         <ThemeToggle />
 
         <DropdownMenu>
