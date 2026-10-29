@@ -8,6 +8,8 @@ export type MetricKey = 'temperature' | 'battery' | 'cpu_usage' | 'ram_usage'
 export interface MetricSpec {
   key: MetricKey
   label: string
+  /** Narrow-screen column label. */
+  short: string
   unit: string
   /** Value at which the backend alert rule fires. */
   threshold: number
@@ -21,6 +23,7 @@ export const METRICS: MetricSpec[] = [
     key: 'temperature',
     threshold: 70,
     label: 'Temperature',
+    short: 'Temp',
     unit: '°C',
     breached: (v) => v > 70,
     ruleLabel: 'Alert above 70 °C',
@@ -29,6 +32,7 @@ export const METRICS: MetricSpec[] = [
     key: 'battery',
     threshold: 20,
     label: 'Battery',
+    short: 'Batt',
     unit: '%',
     breached: (v) => v < 20,
     ruleLabel: 'Alert below 20 %',
@@ -37,6 +41,7 @@ export const METRICS: MetricSpec[] = [
     key: 'cpu_usage',
     threshold: 90,
     label: 'CPU',
+    short: 'CPU',
     unit: '%',
     breached: (v) => v > 90,
     ruleLabel: 'Alert above 90 %',
@@ -45,6 +50,7 @@ export const METRICS: MetricSpec[] = [
     key: 'ram_usage',
     threshold: 90,
     label: 'Memory',
+    short: 'Mem',
     unit: '%',
     breached: (v) => v > 90,
     ruleLabel: 'Alert above 90 %',

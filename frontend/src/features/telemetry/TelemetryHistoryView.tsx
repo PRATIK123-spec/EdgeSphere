@@ -7,7 +7,7 @@ import { TimeAgo } from '@/components/common/TimeAgo'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLatestTelemetry, useTelemetryPage, useTelemetrySeries } from '@/features/telemetry/hooks'
-import { MetricChart } from '@/features/telemetry/MetricChart'
+import { MetricChart, MetricChartLegend } from '@/features/telemetry/MetricChart'
 import { TIME_RANGES, formatBucket, fromServerSeries, seriesStats, type TimeRange } from '@/features/telemetry/series'
 import { TelemetryTable } from '@/features/telemetry/TelemetryTable'
 import { METRICS } from '@/features/telemetry/thresholds'
@@ -92,8 +92,8 @@ export function TelemetryHistoryView({ deviceId }: { deviceId: number }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="order-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground md:order-1">
           <span className="inline-flex items-center gap-1.5">
             <Layers className="size-3.5" aria-hidden="true" />
             <span className="tabular font-medium text-foreground">{formatNumber(series!.readings, 0)}</span>
@@ -104,8 +104,14 @@ export function TelemetryHistoryView({ deviceId }: { deviceId: number }) {
             Loaded <TimeAgo value={new Date(anchor).toISOString()} />
           </span>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <SegmentedControl label="Time range" value={rangeKey} onChange={changeRange} options={TIME_RANGES} />
+        <div className="order-1 flex items-center gap-2 md:order-2">
+          <SegmentedControl
+            label="Time range"
+            value={rangeKey}
+            onChange={changeRange}
+            options={TIME_RANGES}
+            className="flex-1 md:flex-none"
+          />
           <Button
             variant={hasNewer ? 'default' : 'outline'}
             size="sm"
@@ -138,20 +144,22 @@ export function TelemetryHistoryView({ deviceId }: { deviceId: number }) {
         />
       ) : (
         <>
-          {chart?.aggregated && chart.bucketMs && (
-            <p className="rounded-lg border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-              {formatNumber(series!.readings, 0)} readings are averaged on the server into{' '}
-              {formatBucket(chart.bucketMs)} intervals for the charts (hover a point for its min–max). The table
-              below lists every raw reading.
-            </p>
-          )}
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+            <MetricChartLegend />
+            {chart?.aggregated && chart.bucketMs && (
+              <p className="text-xs text-muted-foreground">
+                Charts average {formatNumber(series!.readings, 0)} readings into {formatBucket(chart.bucketMs)}{' '}
+                intervals. Hover for min and max; the table lists every reading.
+              </p>
+            )}
+          </div>
 
           <div className={cn('grid gap-4 transition-opacity md:grid-cols-2', seriesQuery.isPlaceholderData && 'opacity-60')}>
             {METRICS.map((spec) => {
               const stats = seriesStats(series!, spec.key)
               return (
                 <section key={spec.key} className="surface p-4" aria-labelledby={`chart-${spec.key}`}>
-                  <div className="mb-3 flex items-start justify-between gap-3">
+                  <div className="mb-3 flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
                     <div>
                       <h3 id={`chart-${spec.key}`} className="text-sm font-semibold">
                         {spec.label}
@@ -159,7 +167,7 @@ export function TelemetryHistoryView({ deviceId }: { deviceId: number }) {
                       <p className="text-xs text-muted-foreground">{spec.ruleLabel}</p>
                     </div>
                     {stats && (
-                      <dl className="tabular grid grid-cols-3 gap-3 text-right text-xs">
+                      <dl className="tabular grid grid-cols-3 gap-4 text-right font-mono text-xs">
                         <div>
                           <dt className="text-muted-foreground">Min</dt>
                           <dd className="font-medium">{formatNumber(stats.min)}</dd>

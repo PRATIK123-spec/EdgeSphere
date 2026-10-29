@@ -14,15 +14,21 @@ import { formatNumber, parseApiDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { TelemetryResponse } from '@/types/api'
 
-const dateTimeFmt = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'medium' })
+const timeFmt = new Intl.DateTimeFormat(undefined, { timeStyle: 'medium' })
+const dateFmt = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' })
 
 function Value({ spec, value }: { spec: MetricSpec; value: number }) {
   const breached = spec.breached(value)
   return (
-    <span className={cn('tabular inline-flex items-center justify-end gap-1', breached && 'font-medium text-status-critical')}>
+    <span
+      className={cn(
+        'inline-flex items-center justify-end gap-1 font-mono text-[13px] tabular-nums',
+        breached && 'font-semibold text-status-critical',
+      )}
+    >
       {breached && <AlertTriangle className="size-3" aria-label="Outside alert threshold" />}
       {formatNumber(value)}
-      <span className="text-xs font-normal text-muted-foreground">{spec.unit}</span>
+      <span className="hidden font-sans text-xs font-normal text-muted-foreground sm:inline">{spec.unit}</span>
     </span>
   )
 }
@@ -57,7 +63,7 @@ export function TelemetryTable({
           <h2 id="readings-heading" className="text-sm font-semibold">
             Raw readings
           </h2>
-          <p className="text-xs text-muted-foreground">Individual telemetry records, newest first</p>
+          <p className="text-xs text-muted-foreground">Every telemetry record in range, newest first</p>
         </div>
         <span className="tabular inline-flex items-center gap-2 text-xs text-muted-foreground">
           {loading && <Loader2 className="size-3 animate-spin" aria-hidden="true" />}
@@ -69,10 +75,13 @@ export function TelemetryTable({
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="pl-4">Timestamp</TableHead>
+              <TableHead className="pl-4">Time</TableHead>
               {METRICS.map((m) => (
-                <TableHead key={m.key} className="text-right last:pr-4">
-                  {m.label}
+                <TableHead key={m.key} className="px-1.5 text-right last:pr-4 sm:px-2">
+                  <span className="sm:hidden">
+                    {m.short} <span className="font-normal text-muted-foreground">{m.unit}</span>
+                  </span>
+                  <span className="hidden sm:inline">{m.label}</span>
                 </TableHead>
               ))}
             </TableRow>
@@ -80,15 +89,17 @@ export function TelemetryTable({
           <TableBody>
             {rows.map((r) => {
               const date = parseApiDate(r.created_at)
+              const breached = METRICS.some((m) => m.breached(r[m.key]))
               return (
-                <TableRow key={r.id}>
+                <TableRow key={r.id} className={cn(breached && 'bg-status-critical/5')}>
                   <TableCell className="pl-4 whitespace-nowrap">
-                    <time dateTime={date?.toISOString()} className="tabular text-sm">
-                      {date ? dateTimeFmt.format(date) : '—'}
+                    <time dateTime={date?.toISOString()} className="block leading-tight tabular-nums">
+                      <span className="text-sm">{date ? timeFmt.format(date) : '—'}</span>
+                      <span className="block text-xs text-muted-foreground">{date ? dateFmt.format(date) : ''}</span>
                     </time>
                   </TableCell>
                   {METRICS.map((m) => (
-                    <TableCell key={m.key} className="text-right last:pr-4">
+                    <TableCell key={m.key} className="px-1.5 text-right last:pr-4 sm:px-2">
                       <Value spec={m} value={r[m.key]} />
                     </TableCell>
                   ))}

@@ -85,7 +85,7 @@ export function DeviceScopedPage({
             <StatusBadge status={selected.status} />
             <span className="font-mono text-xs text-muted-foreground">{selected.serial_number}</span>
             <span className="text-xs text-muted-foreground">
-              {selected.device_type} · {selected.manufacturer} {selected.model}
+              <span className="capitalize">{selected.device_type}</span> · {selected.manufacturer} {selected.model}
             </span>
             <span className="text-xs text-muted-foreground">
               Last seen <TimeAgo value={selected.last_seen} fallback="never" />

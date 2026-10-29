@@ -25,8 +25,8 @@ function PercentMeter({ metric, value }: { metric: MetricSpec; value: number }) 
           style={{ width: `${pct}%` }}
         />
         <div
-          className="absolute -top-1 -bottom-1 w-0.5 rounded-full bg-status-critical/70"
-          style={{ left: `calc(${metric.threshold}% - 1px)` }}
+          className="absolute -top-1 -bottom-1 w-0.5 -translate-x-1/2 rounded-full bg-status-critical/70"
+          style={{ left: `${metric.threshold}%` }}
           title={metric.ruleLabel}
         />
       </div>
@@ -47,9 +47,9 @@ function AverageRow({ icon, metric, value }: { icon: ReactNode; metric: MetricSp
           {icon}
           Average {metric.label}
         </span>
-        <span className={cn('tabular text-xl font-semibold', metric.breached(value) && 'text-status-critical')}>
+        <span className={cn('font-mono text-xl font-semibold tabular-nums', metric.breached(value) && 'text-status-critical')}>
           {formatNumber(value, 2)}
-          <span className="ml-0.5 text-sm font-normal text-muted-foreground">{metric.unit}</span>
+          <span className="ml-0.5 font-sans text-sm font-normal text-muted-foreground">{metric.unit}</span>
         </span>
       </div>
       <PercentMeter metric={metric} value={value} />
@@ -112,9 +112,9 @@ function TemperatureRange({ data }: { data: DeviceAnalyticsResponse }) {
         ].map(({ label, value }) => (
           <div key={label} className="rounded-lg border bg-background/40 px-2 py-2.5">
             <dt className="text-xs text-muted-foreground">{label}</dt>
-            <dd className={cn('mt-0.5 text-lg font-semibold', t.breached(value) && 'text-status-critical')}>
+            <dd className={cn('mt-0.5 font-mono text-lg font-semibold', t.breached(value) && 'text-status-critical')}>
               {formatNumber(value, 2)}
-              <span className="ml-0.5 text-xs font-normal text-muted-foreground">°C</span>
+              <span className="ml-0.5 font-sans text-xs font-normal text-muted-foreground">°C</span>
             </dd>
           </div>
         ))}
@@ -163,16 +163,12 @@ export function AnalyticsPanel({ deviceId, onViewTelemetry }: { deviceId: number
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 rounded-xl border border-primary/25 bg-primary/5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-xl border bg-card/60 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <Sigma className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
-          <p className="text-sm">
-            <span className="font-medium">Aggregate analytics</span>
-            <span className="text-muted-foreground">
-              {' '}
-              · computed by the server over all {formatNumber(data.records, 0)} readings this device has ever reported.
-              These are summaries, not individual readings.
-            </span>
+          <p className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">All-time summary.</span> The server computed these from all{' '}
+            {formatNumber(data.records, 0)} readings this device has reported. Use Telemetry for individual readings.
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
@@ -201,9 +197,13 @@ export function AnalyticsPanel({ deviceId, onViewTelemetry }: { deviceId: number
           hint="Telemetry readings aggregated"
         />
         <StatTile
-          label="Last reading"
+          label="Latest"
           icon={CalendarClock}
-          value={<span className="text-xl">{data.last_updated ? <TimeAgo value={data.last_updated} /> : '—'}</span>}
+          value={
+            <span className="block font-sans text-lg leading-7 font-semibold tracking-tight">
+              {data.last_updated ? <TimeAgo value={data.last_updated} /> : '—'}
+            </span>
+          }
           hint={formatDateTime(data.last_updated)}
         />
         <StatTile

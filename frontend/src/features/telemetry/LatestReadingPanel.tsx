@@ -100,7 +100,7 @@ export function LatestReadingPanel({ deviceId }: { deviceId: number }) {
                     />
                   </div>
                   <span
-                    className="absolute -top-1 h-3.5 w-0.5 -translate-x-1/2 rounded-full bg-foreground/60"
+                    className="absolute -top-1 h-3.5 w-0.5 -translate-x-1/2 rounded-full bg-status-critical/70"
                     style={{ left: `${meterPercent(metric.threshold)}%` }}
                   />
                 </div>

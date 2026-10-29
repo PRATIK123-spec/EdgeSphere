@@ -1,8 +1,10 @@
 import { useId } from 'react'
+import { TriangleAlert } from 'lucide-react'
 import {
   Area,
   AreaChart,
   CartesianGrid,
+  ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -30,12 +32,14 @@ function yTicks(domain: [number, number], isPercent: boolean): number[] {
   return ticks
 }
 
+/** Temperature scales to the data but always includes the alert threshold. */
 function yDomain(spec: MetricSpec, stats: Bounds | null): [number, number] {
   if (spec.key !== 'temperature') return PERCENT_DOMAIN
-  if (!stats) return [0, 100]
+  const lo = Math.min(stats?.min ?? 0, spec.threshold)
+  const hi = Math.max(stats?.max ?? spec.threshold, spec.threshold)
+  const pad = Math.max(2, (hi - lo) * 0.08)
   // Round outward to tens so axis ticks land on readable values.
-  const pad = Math.max(2, (stats.max - stats.min) * 0.1)
-  return [Math.floor((stats.min - pad) / 10) * 10, Math.ceil((stats.max + pad) / 10) * 10]
+  return [Math.floor((lo - pad) / 10) * 10, Math.ceil((hi + pad) / 10) * 10]
 }
 
 const secondsFmt = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -44,11 +48,39 @@ const dayTimeFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'nu
 const dayFmt = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' })
 const fullFmt = new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'medium' })
 
+const MINUTE = 60_000
+const HOUR = 60 * MINUTE
+const DAY = 24 * HOUR
+const TICK_STEPS = [MINUTE, 5 * MINUTE, 15 * MINUTE, 30 * MINUTE, HOUR, 2 * HOUR, 3 * HOUR, 6 * HOUR, 12 * HOUR, DAY, 2 * DAY, 7 * DAY]
+
+/** Round, calendar-aligned x ticks (on the hour, half hour…), at most `max`. */
+function timeTicks([lo, hi]: [number, number], max = 5): number[] | undefined {
+  const span = hi - lo
+  if (span <= 0) return undefined
+  const step = TICK_STEPS.find((s) => span / s <= max) ?? Math.ceil(span / max / DAY) * DAY
+  // Align to local time so 06:00 lands on 06:00, not on a UTC boundary.
+  const offset = new Date(lo).getTimezoneOffset() * MINUTE
+  const ticks: number[] = []
+  for (let t = Math.ceil((lo - offset) / step) * step + offset; t <= hi; t += step) ticks.push(t)
+  return ticks
+}
+
 function tickFormatter(spanMs: number) {
   if (spanMs <= 15 * 60_000) return (t: number) => secondsFmt.format(t)
   if (spanMs <= 36 * 3_600_000) return (t: number) => timeFmt.format(t)
   if (spanMs <= 10 * 86_400_000) return (t: number) => dayTimeFmt.format(t)
   return (t: number) => dayFmt.format(t)
+}
+
+/** [start, end] of each reporting outage: the real points either side of a null break. */
+function gapRanges(points: SeriesPoint[], key: MetricSpec['key']): [number, number][] {
+  const gaps: [number, number][] = []
+  for (let i = 1; i < points.length - 1; i++) {
+    if (points[i]!.count === 0 && points[i - 1]![key] !== null && points[i + 1]![key] !== null) {
+      gaps.push([points[i - 1]!.t, points[i + 1]!.t])
+    }
+  }
+  return gaps
 }
 
 interface TooltipPayloadItem {
@@ -72,30 +104,42 @@ function ChartTooltip({
   const extremes = point.range?.[spec.key]
   const breached = spec.breached(item.value) || (extremes ? extremes.some((v) => spec.breached(v)) : false)
   return (
-    <div className="rounded-lg border bg-popover px-3 py-2 text-xs shadow-md">
+    <div className="elevation-2 min-w-44 rounded-lg border bg-popover px-3 py-2.5 text-xs">
       <div className="text-muted-foreground">{fullFmt.format(point.t)}</div>
-      <div className="mt-1 flex items-baseline gap-1.5">
-        <span className="text-muted-foreground">{spec.label}</span>
-        <span className="tabular font-semibold text-foreground">
-          {formatNumber(item.value)} {spec.unit}
+      <div className="mt-1.5 flex items-baseline justify-between gap-4">
+        <span className="text-muted-foreground">{point.count > 1 ? `Avg ${spec.label.toLowerCase()}` : spec.label}</span>
+        <span className="tabular font-mono text-sm font-semibold text-foreground">
+          {formatNumber(item.value)}
+          <span className="ml-0.5 font-sans text-xs font-normal text-muted-foreground">{spec.unit}</span>
         </span>
       </div>
-      {point.count > 1 && (
-        <div className="mt-0.5 text-muted-foreground">
-          Average of {point.count} readings
-          {point.range && (
-            <>
-              {' '}
-              · range {formatNumber(point.range[spec.key][0])}–{formatNumber(point.range[spec.key][1])}
-            </>
-          )}
+      {point.count > 1 && extremes && (
+        <div className="mt-0.5 flex justify-between gap-4 text-muted-foreground">
+          <span>{point.count} readings</span>
+          <span className="tabular font-mono">
+            {formatNumber(extremes[0])}–{formatNumber(extremes[1])}
+          </span>
         </div>
       )}
-      {breached && <div className="mt-0.5 font-medium text-status-critical">Outside alert threshold</div>}
+      <div
+        className={cn(
+          'mt-2 flex items-center gap-1.5 border-t pt-1.5',
+          breached ? 'font-medium text-status-critical' : 'text-muted-foreground',
+        )}
+      >
+        {breached && <TriangleAlert className="size-3" aria-hidden="true" />}
+        {breached ? 'Outside alert threshold' : spec.ruleLabel}
+      </div>
     </div>
   )
 }
 
+/**
+ * One metric over time. Real readings (or server bucket means) only:
+ * null points break the line, outages get a "No data" band, a single
+ * reading renders as a single point, and the alert threshold is a red
+ * dashed line that is always inside the visible domain.
+ */
 export function MetricChart({
   spec,
   points,
@@ -113,12 +157,17 @@ export function MetricChart({
 }) {
   const gradientId = useId().replace(/:/g, '')
   const real = points.filter((p) => p[spec.key] !== null)
-  const span = real.length > 1 ? real[real.length - 1]!.t - real[0]!.t : 0
+  const first = real[0]?.t ?? 0
+  const last = real[real.length - 1]?.t ?? 0
+  const span = last - first
+  // A lone reading still needs a visible x-range; pad it by 30 min each side.
+  const xDomain: [number, number] = span > 0 ? [first, last] : [first - 1_800_000, last + 1_800_000]
   const domain = yDomain(spec, stats)
-  const threshold = spec.threshold
   const showDots = real.length <= 40
+  const lone = real.length === 1
+  const gaps = gapRanges(points, spec.key)
   const summary = stats
-    ? `${spec.label}: ${real.length} points, min ${formatNumber(stats.min)}, max ${formatNumber(stats.max)} ${spec.unit}`
+    ? `${spec.label}: ${real.length} points, min ${formatNumber(stats.min)}, max ${formatNumber(stats.max)} ${spec.unit}. ${spec.ruleLabel}.${gaps.length ? ` ${gaps.length} reporting ${gaps.length === 1 ? 'gap' : 'gaps'}.` : ''}`
     : `${spec.label}: no data`
 
   return (
@@ -126,33 +175,52 @@ export function MetricChart({
       <ResponsiveContainer width="100%" height="100%" initialDimension={{ width: 320, height }}>
         <AreaChart
           data={points}
-          margin={compact ? { top: 4, right: 2, bottom: 2, left: 2 } : { top: 8, right: 8, bottom: 0, left: -12 }}
+          margin={compact ? { top: 4, right: 2, bottom: 2, left: 2 } : { top: 10, right: 6, bottom: 0, left: -14 }}
         >
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.22} />
+              <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.18} />
               <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
             </linearGradient>
           </defs>
 
-          {!compact && <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="0" />}
+          {!compact && <CartesianGrid vertical={false} stroke="var(--border)" />}
+
+          {gaps.map(([x1, x2]) => (
+            <ReferenceArea
+              key={x1}
+              x1={x1}
+              x2={x2}
+              fill="var(--muted-foreground)"
+              fillOpacity={0.08}
+              strokeOpacity={0}
+              ifOverflow="hidden"
+              label={
+                compact
+                  ? undefined
+                  : { value: 'No data', position: 'insideTop', fill: 'var(--muted-foreground)', fontSize: 10 }
+              }
+            />
+          ))}
 
           <XAxis
             dataKey="t"
             type="number"
             scale="time"
-            domain={['dataMin', 'dataMax']}
+            domain={xDomain}
             hide={compact}
-            tickFormatter={tickFormatter(span)}
+            ticks={timeTicks(xDomain)}
+            tickFormatter={tickFormatter(xDomain[1] - xDomain[0])}
             tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
             tickLine={false}
+            tickMargin={6}
             axisLine={{ stroke: 'var(--border)' }}
-            minTickGap={36}
+            minTickGap={48}
           />
           <YAxis
             domain={domain}
             hide={compact}
-            width={44}
+            width={40}
             tick={{ fill: 'var(--muted-foreground)', fontSize: 11 }}
             tickLine={false}
             axisLine={false}
@@ -161,17 +229,27 @@ export function MetricChart({
           />
 
           <ReferenceLine
-            y={threshold}
+            y={spec.threshold}
             stroke="var(--status-critical)"
-            strokeOpacity={compact ? 0.45 : 0.7}
+            strokeOpacity={compact ? 0.5 : 0.75}
             strokeDasharray="4 4"
-            ifOverflow="discard"
+            label={
+              compact
+                ? undefined
+                : {
+                    value: `${spec.threshold}${spec.unit === '%' ? '%' : ` ${spec.unit}`}`,
+                    position: 'insideTopRight',
+                    fill: 'var(--status-critical)',
+                    fontSize: 10,
+                  }
+            }
           />
 
           <Tooltip
             cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1, strokeDasharray: '3 3' }}
             content={<ChartTooltip spec={spec} />}
             isAnimationActive={false}
+            allowEscapeViewBox={{ x: false, y: true }}
           />
 
           <Area
@@ -182,11 +260,35 @@ export function MetricChart({
             fill={`url(#${gradientId})`}
             connectNulls={false}
             isAnimationActive={false}
-            dot={showDots ? { r: compact ? 2 : 3, fill: 'var(--primary)', stroke: 'var(--card)', strokeWidth: 1.5 } : false}
-            activeDot={{ r: 4, fill: 'var(--primary)', stroke: 'var(--card)', strokeWidth: 2 }}
+            dot={
+              showDots
+                ? { r: lone ? 5 : compact ? 2 : 3, fill: 'var(--primary)', stroke: 'var(--card)', strokeWidth: 1.5 }
+                : false
+            }
+            activeDot={{ r: 4.5, fill: 'var(--primary)', stroke: 'var(--card)', strokeWidth: 2 }}
           />
         </AreaChart>
       </ResponsiveContainer>
     </div>
+  )
+}
+
+/** Shared key for telemetry charts: series line, threshold, outage band. */
+export function MetricChartLegend({ className }: { className?: string }) {
+  return (
+    <ul className={cn('flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-muted-foreground', className)}>
+      <li className="flex items-center gap-2">
+        <span className="h-0.5 w-5 rounded-full bg-primary" aria-hidden="true" />
+        Reading
+      </li>
+      <li className="flex items-center gap-2">
+        <span className="w-5 border-t-2 border-dashed border-status-critical/80" aria-hidden="true" />
+        Alert threshold
+      </li>
+      <li className="flex items-center gap-2">
+        <span className="h-3 w-5 rounded-sm bg-muted-foreground/15" aria-hidden="true" />
+        No data (device not reporting)
+      </li>
+    </ul>
   )
 }

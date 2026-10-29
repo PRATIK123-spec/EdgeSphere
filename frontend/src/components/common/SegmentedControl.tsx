@@ -27,10 +27,10 @@ export function SegmentedControl<T extends string>({
           aria-pressed={value === option.value}
           onClick={() => onChange(option.value)}
           className={cn(
-            'flex-1 rounded-md px-2.5 py-1 text-xs font-medium transition-colors sm:flex-none',
+            'min-h-8 flex-1 rounded-md px-3 py-1 text-xs font-medium transition-colors sm:flex-none',
             'focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:outline-none',
             value === option.value
-              ? 'bg-background text-foreground shadow-sm'
+              ? 'elevation-1 bg-background text-foreground'
               : 'text-muted-foreground hover:text-foreground',
           )}
         >
