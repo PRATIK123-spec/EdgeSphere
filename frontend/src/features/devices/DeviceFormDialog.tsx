@@ -37,6 +37,8 @@ export interface DeviceFormDialogProps {
    * inline and mapped onto fields where the API reports them.
    */
   onSubmit: (payload: DeviceCreate) => Promise<void>
+  /** Where focus goes on close, when opened without a Radix trigger. */
+  onCloseAutoFocus?: (event: Event) => void
 }
 
 export function DeviceFormDialog({
@@ -45,6 +47,7 @@ export function DeviceFormDialog({
   onOpenChange,
   initialValues,
   onSubmit,
+  onCloseAutoFocus,
 }: DeviceFormDialogProps) {
   const formId = useId()
   const suggestionsId = useId()
@@ -99,7 +102,7 @@ export function DeviceFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !isSubmitting && onOpenChange(next)}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg" onCloseAutoFocus={onCloseAutoFocus}>
         <DialogHeader>
           <DialogTitle>{isCreate ? 'Register device' : 'Edit device'}</DialogTitle>
           <DialogDescription>

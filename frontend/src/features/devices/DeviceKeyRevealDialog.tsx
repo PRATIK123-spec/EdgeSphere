@@ -29,11 +29,14 @@ export function DeviceKeyRevealDialog({
   device,
   deviceKey,
   onDone,
+  onCloseAutoFocus,
   reason = 'created',
 }: {
   device: DeviceResponse
   deviceKey: string
   onDone: () => void
+  /** Where focus goes on close, when opened without a Radix trigger. */
+  onCloseAutoFocus?: (event: Event) => void
   /** 'created' after registration, 'rotated' after a key rotation. */
   reason?: 'created' | 'rotated'
 }) {
@@ -66,6 +69,7 @@ export function DeviceKeyRevealDialog({
   return (
     <Dialog open onOpenChange={() => undefined}>
       <DialogContent
+        onCloseAutoFocus={onCloseAutoFocus}
         showCloseButton={false}
         className="sm:max-w-xl"
         onEscapeKeyDown={(e) => e.preventDefault()}

@@ -8,9 +8,8 @@ export function AnalyticsPage() {
 
   return (
     <DeviceScopedPage
-      eyebrow="Aggregates"
       title="Analytics"
-      description="Server-computed summary statistics across a device's entire telemetry history."
+      description="All-time summary statistics for one device, computed by the server."
     >
       {(device) => (
         <AnalyticsPanel

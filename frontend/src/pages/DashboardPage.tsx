@@ -41,7 +41,6 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Fleet overview"
         title={`${greeting()}${firstName ? `, ${firstName}` : ''}`}
         description={
           hasDevices ? (

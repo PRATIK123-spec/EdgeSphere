@@ -19,14 +19,12 @@ import type { DeviceResponse } from '@/types/api'
  * (Telemetry, Analytics): device list states, selector, and context strip.
  */
 export function DeviceScopedPage({
-  eyebrow,
   title,
   description,
   headerExtra,
   banner,
   children,
 }: {
-  eyebrow: string
   title: string
   description: string
   /** Rendered next to the device selector. */
@@ -41,7 +39,6 @@ export function DeviceScopedPage({
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow={eyebrow}
         title={title}
         description={description}
         actions={

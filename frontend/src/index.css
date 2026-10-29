@@ -26,7 +26,7 @@
   --card-foreground: oklch(0.2 0.015 255);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0.015 255);
-  --primary: oklch(0.55 0.12 205);
+  --primary: oklch(0.5 0.11 205); /* 5.3:1 on background, 5.4:1 under white text */
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.955 0.006 250);
   --secondary-foreground: oklch(0.25 0.015 255);
@@ -37,12 +37,12 @@
   --destructive: oklch(0.58 0.21 25);
   --border: oklch(0.9 0.008 250);
   --input: oklch(0.9 0.008 250);
-  --ring: oklch(0.55 0.12 205);
+  --ring: oklch(0.5 0.11 205);
 
   /* Status — reserved; always shipped with icon + label */
   --status-online: oklch(0.6 0.15 155);
   --status-offline: oklch(0.6 0.02 255);
-  --status-warning: oklch(0.7 0.15 70);
+  --status-warning: oklch(0.64 0.15 65); /* 3.5:1 on card: icon/dot contrast */
   --status-critical: oklch(0.58 0.21 25);
 
   --sidebar: oklch(0.975 0.004 250);

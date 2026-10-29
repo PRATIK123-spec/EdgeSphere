@@ -5,7 +5,6 @@ import { LiveDeviceMonitor } from '@/features/live/LiveDeviceMonitor'
 export function LiveMonitorPage() {
   return (
     <DeviceScopedPage
-      eyebrow="Monitor"
       title="Live Monitor"
       description="Readings, status changes and alerts for one device as they happen."
       banner={<LiveConnectionPanel />}

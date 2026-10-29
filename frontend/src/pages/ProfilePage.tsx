@@ -65,7 +65,7 @@ export function ProfilePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="Account" title="Profile" description="Your EdgeSphere operator account." />
+      <PageHeader title="Profile" description="Your EdgeSphere operator account." />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="surface p-6 lg:col-span-2" aria-labelledby="account-heading">

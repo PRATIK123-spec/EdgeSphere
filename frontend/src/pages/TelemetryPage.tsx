@@ -4,9 +4,8 @@ import { TelemetryHistoryView } from '@/features/telemetry/TelemetryHistoryView'
 export function TelemetryPage() {
   return (
     <DeviceScopedPage
-      eyebrow="Raw telemetry"
-      title="Telemetry History"
-      description="Every reading a device has reported: temperature, battery, CPU and memory over time."
+      title="Telemetry"
+      description="Every reading one device has reported, charted against its alert thresholds."
     >
       {(device) => <TelemetryHistoryView deviceId={device.id} />}
     </DeviceScopedPage>

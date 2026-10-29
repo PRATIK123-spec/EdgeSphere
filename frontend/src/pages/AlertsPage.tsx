@@ -30,9 +30,8 @@ export function AlertsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Incident response"
         title="Alerts"
-        description="Threshold breaches across your fleet. Acknowledge what you are handling; resolve when it is fixed."
+        description="Threshold breaches across your fleet. Acknowledge what you are handling, resolve it once fixed."
       />
       {devicesQuery.isPending ? (
         <CardSkeleton lines={5} />

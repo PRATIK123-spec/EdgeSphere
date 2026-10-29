@@ -75,14 +75,63 @@ Every user-facing query is scoped to the caller's own devices.
 - `features/<area>/` — `api.ts` (calls), `hooks.ts` (TanStack Query), components.
   Areas: alerts, analytics, auth, dashboard, devices, live, realtime, system, telemetry, theme
 - `components/ui/` — shadcn primitives; `components/common/` — shared app pieces
-  (StatTile, StatusBadge, PageHeader, `states.tsx` for loading/empty/error);
-  `components/layout/` — AppShell, Sidebar, Topbar, route guards
+  (StatTile, StatusBadge, PageHeader, FilterChips, SegmentedControl, ServerWakeNotice,
+  `states.tsx` for loading/empty/error); `components/layout/` — AppShell, Sidebar, Topbar,
+  `nav-items.ts` (grouped nav: Monitor / Fleet / Account), route guards
 - `lib/api-client.ts` — **the only way to call the API**. Base is
   `VITE_API_BASE_URL ?? '/api'`; handles 401 → logout, `X-Total-Count` pages, 422 field errors,
-  and never shows server text for 5xx
+  never shows server text for 5xx, and retries cold starts (see below)
+- `lib/server-wake.ts` — "server is waking up" state; read it with `useServerWake()`
+  (`features/system/hooks.ts`)
 - `lib/auth-storage.ts` — JWT in localStorage (`edgesphere.session`), expiry from `exp`
 - `lib/realtime.ts` — WebSocket client with backoff and heartbeat watchdog
 - `types/api.ts` — shared API types; keep in sync with backend schemas
+
+## Frontend design system
+
+Tokens live in `frontend/src/index.css`: light values on `:root`, dark on `.dark`
+(ThemeProvider toggles the class), mapped to Tailwind colours in `@theme inline`.
+Change a token there, never hard-code a colour in a component.
+
+- **Surfaces:** `background`, `card`, `popover`, `muted`, `surface-raised`; borders `border`,
+  `border-strong`; sidebar tokens for the nav. Cards use the `.surface` class.
+- **Brand:** `primary` (cyan). Light value is tuned for contrast: 5.3:1 on background and
+  5.4:1 under `primary-foreground`. Re-check contrast if you change it.
+- **Status (reserved):** `status-online`, `status-offline`, `status-warning`,
+  `status-critical`. Only for device/alert state, always paired with an icon or label.
+  Never use them as chart series colours.
+- **Charts:** a single series uses `--primary`; `--chart-1…5` is the validated categorical
+  order for multi-series charts. Alert thresholds are always a red dashed line (charts)
+  or red tick (meters). Outages are a line break plus a muted "No data" band; never
+  interpolate across them. Only the widest band gets a label.
+- **Elevation:** `.elevation-1/2/3` (shadow tokens differ per theme).
+- **Type:** Geist for UI, JetBrains Mono for numbers and IDs. Utilities:
+  `.text-channel-label` (small mono caps, section labels only), `.text-metric`,
+  `.text-metric-lg`, `.text-id`. Gotcha: `cn()`/tailwind-merge treats custom `text-*`
+  utilities as colours and drops them next to `text-muted-foreground` etc.; inside `cn()`
+  (and shadcn components such as TableCell) use `font-mono text-xs` instead.
+
+### UI conventions
+- Page = `PageHeader` (title matching the nav label + one-line description, no eyebrow;
+  the topbar breadcrumb names the group) → one toolbar row → content.
+- Every data view has a skeleton, a designed `EmptyState` and an `ErrorState`.
+- Filters: `SegmentedControl` for one-of choices, `FilterChips` for multi-select
+  (empty selection = no filter). Filtering and paging happen on the server where the API allows.
+- Alert acknowledge/resolve are optimistic (`useAlertAction`) with snapshot rollback.
+- Dialogs opened from context (not a Radix trigger) must return focus on close
+  (`onCloseAutoFocus`, see RegisterDeviceProvider).
+- Mobile: tables become cards or fit five columns at 375px; actions stay reachable
+  (DeviceActionsMenu on cards via a stretched link, no nested buttons).
+
+### Cold starts (Render free plan)
+`api-client` treats network errors and 502/503/504 as cold starts and retries with backoff
+for about 60 s: every GET, plus requests that pass `retryOnColdStart: true` (login,
+register, alert acknowledge/resolve). Other writes are not retried. A request still pending
+after 4 s, when the API has not answered for 10 min, also counts as waking.
+`ServerWakeNotice` (mounted in App) shows "Waking up the server, this can take up to a
+minute"; `ErrorState` shows a cold-start variant that retries every 15 s. Query-level retries
+skip cold-start errors. If register gets 409 after a retry, AuthProvider signs in with the
+same credentials, because an earlier attempt may have created the account.
 
 ## API (verified against routers)
 
@@ -161,14 +210,14 @@ irreversible — back up (`pg_dump`) before running migrations on real data.
 - `simulator/device_manager.py` still uses hardcoded placeholder keys; should read from env.
 - `requirements.txt` carries redundant libs (python-jose *and* PyJWT; passlib, pwdlib, bcrypt,
   argon2; psycopg2 *and* psycopg 3; pytest in prod deps). Check imports before removing any.
-- `components/common/PhasePlaceholder.tsx` appears unused.
-- Historical: CRLF line endings in some backend files; 3 fast-refresh lint warnings.
+- Historical: CRLF line endings in some backend files; 2 fast-refresh lint warnings
+  (`button.tsx`, `tabs.tsx` export variants alongside components).
 - Not yet assessed: rate limiting, telemetry retention, alert dedup under concurrent ingestion.
 
 ## Roadmap (priority order)
 
-1. **Frontend visual redesign** — consistent design system, polished dashboard/KPIs, tables,
-   charts, auth pages, skeletons/empty/error states, mobile responsiveness. No backend changes, no mock data.
+1. **Frontend visual redesign** — done on branch `frontend-redesign` (design system above,
+   all pages, cold-start handling). Not yet merged or deployed.
 2. **Security hardening** — least-privilege DB role, git-history secret audit, JWT storage
    review, rate limiting, dependency audit.
 3. **Observability** — structured logs with redaction, health/readiness checks, request IDs, metrics.

@@ -75,7 +75,6 @@ export function DevicesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        eyebrow="Fleet"
         title="Devices"
         description={
           summary?.total
@@ -182,7 +181,7 @@ export function DevicesPage() {
                     setSort(v === 'attention' ? null : { key: v as DeviceSortKey, dir: sort?.dir ?? 'asc' })
                   }
                 >
-                  <SelectTrigger className="h-9 w-full min-w-0 lg:w-52" aria-label="Sort devices">
+                  <SelectTrigger className="h-9 w-full min-w-0 *:data-[slot=select-value]:mr-auto lg:w-52" aria-label="Sort devices">
                     <span className="hidden text-muted-foreground sm:inline">Sort:</span>
                     <SelectValue />
                   </SelectTrigger>

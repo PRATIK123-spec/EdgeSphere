@@ -1,4 +1,4 @@
-import { Suspense, lazy, useCallback, useMemo, useState, type ReactNode } from 'react'
+import { Suspense, lazy, useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import { toast } from 'sonner'
 
 import { useCreateDevice } from '@/features/devices/mutations'
@@ -33,6 +33,15 @@ export function RegisterDeviceProvider({ children }: { children: ReactNode }) {
   const [formRequested, setFormRequested] = useState(false)
   const [provisioned, setProvisioned] = useState<Provisioned | null>(null)
   const createDevice = useCreateDevice()
+  // The dialogs open from context, not a Radix trigger, so return focus ourselves.
+  const openerRef = useRef<HTMLElement | null>(null)
+  const restoreFocus = useCallback((event: Event) => {
+    event.preventDefault()
+    // The form hands off to the key-reveal dialog; leave focus with it.
+    if (document.querySelector('[role="dialog"][data-state="open"]')) return
+    const opener = openerRef.current
+    if (opener?.isConnected) opener.focus()
+  }, [])
   const { mutateAsync, reset } = createDevice
 
   const handleSubmit = useCallback(
@@ -53,6 +62,7 @@ export function RegisterDeviceProvider({ children }: { children: ReactNode }) {
         // Fetch the key-reveal code now, so it is ready the instant the
         // device is created and the one-time key never waits on the network.
         void import('@/features/devices/DeviceKeyRevealDialog')
+        openerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
         setFormRequested(true)
         setFormOpen(true)
       },
@@ -71,6 +81,7 @@ export function RegisterDeviceProvider({ children }: { children: ReactNode }) {
             open={formOpen}
             onOpenChange={setFormOpen}
             onSubmit={handleSubmit}
+            onCloseAutoFocus={restoreFocus}
           />
         )}
 
@@ -79,6 +90,7 @@ export function RegisterDeviceProvider({ children }: { children: ReactNode }) {
             device={provisioned.device}
             deviceKey={provisioned.deviceKey}
             onDone={() => setProvisioned(null)}
+            onCloseAutoFocus={restoreFocus}
           />
         )}
       </Suspense>

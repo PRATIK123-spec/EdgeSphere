@@ -81,8 +81,7 @@ export function alertTypeMeta(type: string): TypeMeta {
   return TYPES[type.toUpperCase()] ?? { label: titleCase(type) || 'Unknown', icon: Bell }
 }
 
-/** Severities and types the backend's alert rules produce (filter options). */
-export const KNOWN_SEVERITIES = ['CRITICAL', 'HIGH'] as const
+/** Alert types the backend's alert rules produce (filter options). */
 export const KNOWN_TYPES = ['TEMPERATURE', 'BATTERY', 'CPU', 'RAM'] as const
 
 export const STATUS_LABELS: Record<string, string> = {

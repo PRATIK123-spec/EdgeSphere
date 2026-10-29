@@ -100,19 +100,18 @@ export function AlertList({
                 {!compact && <span className="font-mono text-[11px] text-muted-foreground">#{alert.id}</span>}
               </div>
               <p className="mt-1 text-sm text-pretty text-muted-foreground">{alert.message}</p>
-              {/* Compact rows, and full rows on phones, show the time inline instead of in a side column. */}
-              <TimeAgo
-                value={alert.created_at}
-                className={cn('mt-1 mr-2 inline-block text-xs text-muted-foreground', !compact && 'sm:hidden')}
-              />
-              {device && (
-                <Link
-                  to={`/devices/${device.id}`}
-                  className="mt-1 inline-block max-w-full truncate text-xs text-foreground/80 underline-offset-4 hover:underline"
-                >
-                  {device.display_name}
-                </Link>
-              )}
+              <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 text-xs">
+                {/* Compact rows, and full rows on phones, show the time here instead of in a side column. */}
+                <TimeAgo value={alert.created_at} className={cn('text-muted-foreground', !compact && 'sm:hidden')} />
+                {device && (
+                  <Link
+                    to={`/devices/${device.id}`}
+                    className="max-w-full truncate text-foreground/80 underline-offset-4 hover:underline"
+                  >
+                    {device.display_name}
+                  </Link>
+                )}
+              </div>
               {actions && alert.status !== 'resolved' && (
                 <div className="mt-2.5">
                   <AlertActions alert={alert} compact={compact} />
