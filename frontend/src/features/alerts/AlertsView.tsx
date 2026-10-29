@@ -1,6 +1,17 @@
 import { useMemo, useState } from 'react'
-import { Bell, ChevronLeft, ChevronRight, CircleCheck, Clock, FilterX, OctagonAlert, RotateCw, ShieldCheck, TriangleAlert } from 'lucide-react'
+import {
+  Bell,
+  ChevronLeft,
+  ChevronRight,
+  CircleCheck,
+  FilterX,
+  OctagonAlert,
+  RotateCw,
+  ShieldCheck,
+  TriangleAlert,
+} from 'lucide-react'
 
+import { FilterChips, type FilterChipOption } from '@/components/common/FilterChips'
 import { SegmentedControl } from '@/components/common/SegmentedControl'
 import { StatTile } from '@/components/common/StatTile'
 import { EmptyState, ErrorState } from '@/components/common/states'
@@ -16,25 +27,18 @@ import { formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { AlertStatus, DeviceResponse } from '@/types/api'
 
-type StatusFilter = 'open' | AlertStatus | 'all'
 type TimeWindow = '24h' | '7d' | '30d' | 'all'
 
-const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: 'open', label: 'Open' },
-  { value: 'active', label: 'Active' },
-  { value: 'acknowledged', label: 'Acknowledged' },
-  { value: 'resolved', label: 'Resolved' },
-  { value: 'all', label: 'All' },
+const STATUS_OPTIONS: FilterChipOption<AlertStatus>[] = [
+  { value: 'active', label: 'Active', dot: 'bg-status-critical' },
+  { value: 'acknowledged', label: 'Acknowledged', dot: 'bg-status-warning' },
+  { value: 'resolved', label: 'Resolved', dot: 'bg-muted-foreground/50' },
 ]
-const SEVERITY_OPTIONS = [
-  { value: 'ALL', label: 'All severities' },
-  { value: 'CRITICAL', label: 'Critical' },
-  { value: 'HIGH', label: 'High' },
+const SEVERITY_OPTIONS: FilterChipOption<string>[] = [
+  { value: 'CRITICAL', label: 'Critical', dot: 'bg-status-critical' },
+  { value: 'HIGH', label: 'High', dot: 'bg-status-warning' },
 ]
-const TYPE_OPTIONS = [
-  { value: 'ALL', label: 'All types' },
-  ...KNOWN_TYPES.map((t) => ({ value: t, label: alertTypeMeta(t).label })),
-]
+const TYPE_OPTIONS: FilterChipOption<string>[] = KNOWN_TYPES.map((t) => ({ value: t, label: alertTypeMeta(t).label }))
 const TIME_WINDOWS: { value: TimeWindow; label: string; ms: number | null }[] = [
   { value: '24h', label: '24H', ms: 24 * 3_600_000 },
   { value: '7d', label: '7D', ms: 7 * 86_400_000 },
@@ -43,12 +47,6 @@ const TIME_WINDOWS: { value: TimeWindow; label: string; ms: number | null }[] = 
 ]
 const PAGE_SIZE = 20
 const OPEN: AlertStatus[] = ['active', 'acknowledged']
-
-function statusParam(filter: StatusFilter): AlertStatus[] | undefined {
-  if (filter === 'all') return undefined
-  if (filter === 'open') return OPEN
-  return [filter]
-}
 
 function ListSkeleton() {
   return (
@@ -67,15 +65,18 @@ function ListSkeleton() {
   )
 }
 
-/** Count of open alerts matching a severity (cheap: limit=1, uses X-Total-Count). */
-function useOpenCount(deviceId: number | undefined, severity: string | null, status: AlertStatus[] = OPEN) {
+/** Count of alerts matching a filter (cheap: limit=1, uses X-Total-Count). */
+function useAlertCount(deviceId: number | undefined, severity: string | null, status: AlertStatus[] = OPEN) {
   const query = useAlerts({ device_id: deviceId, severity: severity ? [severity] : undefined, status, limit: 1 })
   return query.data?.total
 }
 
+const sameSet = (a: string[], b: string[]) => a.length === b.length && a.every((v) => b.includes(v))
+
 /**
  * Alert center backed by GET /alerts/ — every filter, the time window and
  * pagination are applied by the server. Fleet-wide unless `deviceId` is set.
+ * An empty chip group means "any" for that dimension.
  */
 export function AlertsView({
   devices,
@@ -88,9 +89,9 @@ export function AlertsView({
   /** Provide to show a device filter (fleet page). */
   onDeviceChange?: (deviceId: number | undefined) => void
 }) {
-  const [status, setStatus] = useState<StatusFilter>('open')
-  const [severity, setSeverity] = useState('ALL')
-  const [type, setType] = useState('ALL')
+  const [status, setStatus] = useState<AlertStatus[]>(OPEN)
+  const [severity, setSeverity] = useState<string[]>([])
+  const [type, setType] = useState<string[]>([])
   const [timeWindow, setTimeWindow] = useState<TimeWindow>('all')
   const [anchor, setAnchor] = useState(() => Date.now())
   const [page, setPage] = useState(0)
@@ -100,36 +101,41 @@ export function AlertsView({
 
   const params: AlertQueryParams = {
     device_id: deviceId,
-    status: statusParam(status),
-    severity: severity === 'ALL' ? undefined : [severity],
-    alert_type: type === 'ALL' ? undefined : [type],
+    status: status.length ? status : undefined,
+    severity: severity.length ? severity : undefined,
+    alert_type: type.length ? type : undefined,
     since: windowMs ? new Date(anchor - windowMs).toISOString() : undefined,
     limit: PAGE_SIZE,
     offset: page * PAGE_SIZE,
   }
   const query = useAlerts(params)
 
-  const openCritical = useOpenCount(deviceId, 'CRITICAL')
-  const openHigh = useOpenCount(deviceId, 'HIGH')
-  const acknowledged = useOpenCount(deviceId, null, ['acknowledged'])
+  const openCritical = useAlertCount(deviceId, 'CRITICAL')
+  const openHigh = useAlertCount(deviceId, 'HIGH')
+  const acknowledged = useAlertCount(deviceId, null, ['acknowledged'])
   const allTime = useAlerts({ device_id: deviceId, limit: 1 }).data?.total
 
-  const update = <T,>(setter: (v: T) => void) => (value: T) => {
-    setter(value)
-    setPage(0)
-  }
+  const update =
+    <T,>(setter: (v: T) => void) =>
+    (value: T) => {
+      setter(value)
+      setPage(0)
+    }
   const clear = () => {
-    setStatus('open')
-    setSeverity('ALL')
-    setType('ALL')
+    setStatus(OPEN)
+    setSeverity([])
+    setType([])
     setTimeWindow('all')
     setPage(0)
   }
-  const filtersActive = status !== 'open' || severity !== 'ALL' || type !== 'ALL' || timeWindow !== 'all'
+  const openOnly = sameSet(status, OPEN)
+  const filtersActive = !openOnly || severity.length > 0 || type.length > 0 || timeWindow !== 'all'
 
   const total = query.data?.total ?? 0
   const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
-  const scope = deviceId !== undefined ? devicesById.get(deviceId)?.display_name ?? 'this device' : 'your fleet'
+  const first = page * PAGE_SIZE + 1
+  const last = Math.min(total, (page + 1) * PAGE_SIZE)
+  const scope = deviceId !== undefined ? (devicesById.get(deviceId)?.display_name ?? 'this device') : 'your fleet'
 
   return (
     <div className="space-y-5">
@@ -149,10 +155,10 @@ export function AlertsView({
           hint="Battery, CPU or memory"
         />
         <StatTile label="Acknowledged" icon={CircleCheck} value={acknowledged ?? '–'} hint="Seen, not yet resolved" />
-        <StatTile label="All-time" icon={Bell} value={allTime ?? '–'} hint={`Every alert for ${scope}`} />
+        <StatTile label="All time" icon={Bell} value={allTime ?? '–'} hint={`Every alert for ${scope}`} />
       </section>
 
-      <div className="flex flex-col gap-3 rounded-xl border bg-card/60 p-3">
+      <div className="space-y-3 rounded-xl border bg-card/60 p-3 sm:p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
           {onDeviceChange && (
             <Select
@@ -162,7 +168,7 @@ export function AlertsView({
                 setPage(0)
               }}
             >
-              <SelectTrigger className="h-8 w-full sm:w-56" aria-label="Filter by device">
+              <SelectTrigger className="h-9 w-full sm:w-56" aria-label="Filter by device">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -178,21 +184,23 @@ export function AlertsView({
               </SelectContent>
             </Select>
           )}
-          <SegmentedControl label="Filter by status" value={status} onChange={update(setStatus)} options={STATUS_OPTIONS} className="flex-wrap" />
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-          <SegmentedControl label="Filter by severity" value={severity} onChange={update(setSeverity)} options={SEVERITY_OPTIONS} />
-          <SegmentedControl label="Filter by alert type" value={type} onChange={update(setType)} options={TYPE_OPTIONS} className="flex-wrap" />
-          <SegmentedControl label="Filter by time" value={timeWindow} onChange={update(setTimeWindow)} options={TIME_WINDOWS} />
+          <SegmentedControl
+            label="Time window"
+            value={timeWindow}
+            onChange={update(setTimeWindow)}
+            options={TIME_WINDOWS}
+            className="w-full sm:w-auto"
+          />
           <div className="flex items-center gap-2 sm:ml-auto">
             {filtersActive && (
               <Button variant="ghost" size="sm" onClick={clear}>
-                <FilterX aria-hidden="true" /> Reset
+                <FilterX aria-hidden="true" /> Reset filters
               </Button>
             )}
             <Button
               variant="outline"
               size="sm"
+              className="ml-auto sm:ml-0"
               onClick={() => {
                 setAnchor(Date.now())
                 void query.refetch()
@@ -205,6 +213,11 @@ export function AlertsView({
             </Button>
           </div>
         </div>
+        <div className="flex flex-col gap-x-6 gap-y-2.5 border-t pt-3 xl:flex-row xl:flex-wrap">
+          <FilterChips label="Status" options={STATUS_OPTIONS} value={status} onChange={update(setStatus)} />
+          <FilterChips label="Severity" options={SEVERITY_OPTIONS} value={severity} onChange={update(setSeverity)} />
+          <FilterChips label="Type" options={TYPE_OPTIONS} value={type} onChange={update(setType)} />
+        </div>
       </div>
 
       {query.isPending ? (
@@ -216,45 +229,52 @@ export function AlertsView({
           <EmptyState
             icon={ShieldCheck}
             title={`No alerts for ${scope}`}
-            description="Alerts are raised automatically when a telemetry reading crosses a threshold: temperature above 70 °C, battery below 20 %, or CPU or memory above 90 %."
+            description="Alerts are raised automatically when a reading crosses a threshold: temperature above 70 °C, battery below 20 %, or CPU or memory above 90 %."
           />
         ) : (
           <EmptyState
-            icon={status === 'open' && !filtersActive ? ShieldCheck : FilterX}
-            title={status === 'open' && !filtersActive ? 'No open alerts' : 'No alerts match these filters'}
+            icon={!filtersActive ? ShieldCheck : FilterX}
+            title={!filtersActive ? 'No open alerts' : 'No alerts match these filters'}
             description={
-              status === 'open' && !filtersActive
-                ? 'Every alert has been resolved. Switch to “All” to see the history.'
-                : 'Try a wider time window or a different status, severity or type.'
+              !filtersActive
+                ? 'Every alert has been resolved. Add the Resolved status to see the history.'
+                : 'Widen the time window or change the status, severity or type chips.'
             }
             action={
-              <Button variant="outline" size="sm" onClick={() => (filtersActive ? clear() : update(setStatus)('all'))}>
-                {filtersActive ? 'Reset filters' : 'Show all alerts'}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => (filtersActive ? clear() : update(setStatus)([...OPEN, 'resolved']))}
+              >
+                {filtersActive ? 'Reset filters' : 'Show resolved alerts'}
               </Button>
             }
           />
         )
       ) : (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-            <span role="status">
-              <span className="tabular font-medium text-foreground">{formatNumber(total, 0)}</span>{' '}
-              {total === 1 ? 'alert' : 'alerts'} · newest first · filtered on the server
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Clock className="size-3.5" aria-hidden="true" /> Updates live
-            </span>
-          </div>
+          <p className="text-xs text-muted-foreground" role="status">
+            <span className="tabular font-medium text-foreground">
+              {first}–{last}
+            </span>{' '}
+            of <span className="tabular font-medium text-foreground">{formatNumber(total, 0)}</span>{' '}
+            {total === 1 ? 'alert' : 'alerts'}, newest first. New alerts appear automatically.
+          </p>
           <div className={cn('transition-opacity', query.isPlaceholderData && 'opacity-60')}>
             <AlertList alerts={query.data.items} devices={deviceId === undefined ? devicesById : undefined} />
           </div>
           {pageCount > 1 && (
-            <div className="flex items-center justify-between">
+            <nav aria-label="Alert pages" className="flex items-center justify-between gap-2">
               <span className="tabular text-xs text-muted-foreground">
                 Page {page + 1} of {pageCount}
               </span>
               <div className="flex gap-1.5">
-                <Button variant="outline" size="sm" onClick={() => setPage(page - 1)} disabled={page === 0 || query.isFetching}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(page - 1)}
+                  disabled={page === 0 || query.isFetching}
+                >
                   <ChevronLeft aria-hidden="true" /> Newer
                 </Button>
                 <Button
@@ -266,7 +286,7 @@ export function AlertsView({
                   Older <ChevronRight aria-hidden="true" />
                 </Button>
               </div>
-            </div>
+            </nav>
           )}
         </>
       )}

@@ -166,6 +166,9 @@ export function MetricChart({
   const showDots = real.length <= 40
   const lone = real.length === 1
   const gaps = gapRanges(points, spec.key)
+  // Label at most one band (the widest, if it spans ≥15% of the chart) so labels never pile up.
+  const widest = gaps.reduce<[number, number] | null>((w, g) => (!w || g[1] - g[0] > w[1] - w[0] ? g : w), null)
+  const labelled = widest && widest[1] - widest[0] >= (xDomain[1] - xDomain[0]) * 0.15 ? widest[0] : null
   const summary = stats
     ? `${spec.label}: ${real.length} points, min ${formatNumber(stats.min)}, max ${formatNumber(stats.max)} ${spec.unit}. ${spec.ruleLabel}.${gaps.length ? ` ${gaps.length} reporting ${gaps.length === 1 ? 'gap' : 'gaps'}.` : ''}`
     : `${spec.label}: no data`
@@ -187,6 +190,7 @@ export function MetricChart({
           {!compact && <CartesianGrid vertical={false} stroke="var(--border)" />}
 
           {gaps.map(([x1, x2]) => (
+            // Every gap gets a band; only the widest gets a label.
             <ReferenceArea
               key={x1}
               x1={x1}
@@ -196,7 +200,7 @@ export function MetricChart({
               strokeOpacity={0}
               ifOverflow="hidden"
               label={
-                compact
+                compact || x1 !== labelled
                   ? undefined
                   : { value: 'No data', position: 'insideTop', fill: 'var(--muted-foreground)', fontSize: 10 }
               }

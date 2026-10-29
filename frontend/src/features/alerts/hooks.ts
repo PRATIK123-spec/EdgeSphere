@@ -9,6 +9,7 @@ import { useLatestTelemetry } from '@/features/telemetry/hooks'
 import { METRICS } from '@/features/telemetry/thresholds'
 import { getErrorMessage, isApiError } from '@/lib/api-client'
 import { invalidateSoon } from '@/lib/query-client'
+import type { AlertResponse, Page } from '@/types/api'
 
 export const alertKeys = {
   all: ['alerts'] as const,
@@ -32,15 +33,33 @@ export function useAlerts(params: AlertQueryParams, enabled = true) {
   })
 }
 
-/** Acknowledge / resolve one alert; refreshes alert lists and dashboard counts. */
+/**
+ * Acknowledge / resolve one alert. The change is applied to every cached
+ * alert list immediately and rolled back if the server rejects it; lists
+ * and dashboard counts are then revalidated from the server either way.
+ */
 export function useAlertAction(action: 'acknowledge' | 'resolve') {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: number) => (action === 'acknowledge' ? acknowledgeAlert(id) : resolveAlert(id)),
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: alertKeys.all })
+      const snapshots = queryClient.getQueriesData<Page<AlertResponse>>({ queryKey: alertKeys.all })
+      const now = new Date().toISOString()
+      const apply = (alert: AlertResponse): AlertResponse =>
+        action === 'acknowledge'
+          ? { ...alert, status: 'acknowledged', acknowledged_at: alert.acknowledged_at ?? now }
+          : { ...alert, status: 'resolved', resolved_at: now }
+      queryClient.setQueriesData<Page<AlertResponse>>({ queryKey: alertKeys.all }, (page) =>
+        page ? { ...page, items: page.items.map((a) => (a.id === id ? apply(a) : a)) } : page,
+      )
+      return { snapshots }
+    },
     onSuccess: () => {
       toast.success(action === 'acknowledge' ? 'Alert acknowledged' : 'Alert resolved')
     },
-    onError: (error) => {
+    onError: (error, _id, context) => {
+      for (const [key, data] of context?.snapshots ?? []) queryClient.setQueryData(key, data)
       const message =
         isApiError(error) && error.status === 409 ? 'This alert has already been resolved.' : getErrorMessage(error)
       toast.error(action === 'acknowledge' ? 'Could not acknowledge alert' : 'Could not resolve alert', {

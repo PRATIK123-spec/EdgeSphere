@@ -10,18 +10,19 @@ import { formatDateTime } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { AlertResponse, DeviceResponse } from '@/types/api'
 
-function AlertActions({ alert }: { alert: AlertResponse }) {
+function AlertActions({ alert, compact }: { alert: AlertResponse; compact: boolean }) {
   const acknowledge = useAlertAction('acknowledge')
   const resolve = useAlertAction('resolve')
   if (alert.status === 'resolved') return null
   const busy = acknowledge.isPending || resolve.isPending
+  const size = compact ? 'xs' : 'sm'
 
   return (
-    <div className="flex gap-1.5">
+    <div className="flex flex-wrap gap-1.5">
       {alert.status === 'active' && (
         <Button
           variant="outline"
-          size="xs"
+          size={size}
           disabled={busy}
           onClick={() => acknowledge.mutate(alert.id)}
           aria-label={`Acknowledge alert ${alert.id}`}
@@ -31,8 +32,8 @@ function AlertActions({ alert }: { alert: AlertResponse }) {
         </Button>
       )}
       <Button
-        variant="outline"
-        size="xs"
+        variant="secondary"
+        size={size}
         disabled={busy}
         onClick={() => resolve.mutate(alert.id)}
         aria-label={`Resolve alert ${alert.id}`}
@@ -69,6 +70,7 @@ export function AlertList({
             className={cn(
               'relative flex gap-3',
               compact ? 'py-3' : 'px-4 py-3.5 sm:px-5',
+              !compact && alert.status === 'active' && severityMeta(alert.severity).rank === 0 && 'bg-status-critical/[0.04]',
               alert.status === 'resolved' && 'opacity-75',
             )}
             data-severity={alert.severity}
@@ -79,7 +81,7 @@ export function AlertList({
               <span
                 aria-hidden="true"
                 className={cn(
-                  'absolute top-3 bottom-3 left-0 w-0.5 rounded-r-full',
+                  'absolute top-3 bottom-3 left-0 w-1 rounded-r-full',
                   alert.status === 'resolved' ? 'bg-border' : severityMeta(alert.severity).accent,
                 )}
               />
@@ -98,6 +100,11 @@ export function AlertList({
                 {!compact && <span className="font-mono text-[11px] text-muted-foreground">#{alert.id}</span>}
               </div>
               <p className="mt-1 text-sm text-pretty text-muted-foreground">{alert.message}</p>
+              {/* Compact rows, and full rows on phones, show the time inline instead of in a side column. */}
+              <TimeAgo
+                value={alert.created_at}
+                className={cn('mt-1 mr-2 inline-block text-xs text-muted-foreground', !compact && 'sm:hidden')}
+              />
               {device && (
                 <Link
                   to={`/devices/${device.id}`}
@@ -108,24 +115,26 @@ export function AlertList({
               )}
               {actions && alert.status !== 'resolved' && (
                 <div className="mt-2.5">
-                  <AlertActions alert={alert} />
+                  <AlertActions alert={alert} compact={compact} />
                 </div>
               )}
             </div>
-            <div className="shrink-0 text-right text-xs text-muted-foreground">
-              <TimeAgo value={alert.created_at} className="block font-medium text-foreground/80" />
-              {!compact && <span className="mt-0.5 hidden sm:block">{formatDateTime(alert.created_at)}</span>}
-              {!compact && alert.resolved_at && (
-                <span className="mt-0.5 hidden sm:block">
-                  Resolved <TimeAgo value={alert.resolved_at} />
-                </span>
-              )}
-              {!compact && !alert.resolved_at && alert.acknowledged_at && (
-                <span className="mt-0.5 hidden sm:block">
-                  Ack&apos;d <TimeAgo value={alert.acknowledged_at} />
-                </span>
-              )}
-            </div>
+            {!compact && (
+              <div className="hidden shrink-0 text-right text-xs text-muted-foreground sm:block">
+                <TimeAgo value={alert.created_at} className="block font-medium text-foreground/80" />
+                <span className="mt-0.5 hidden sm:block">{formatDateTime(alert.created_at)}</span>
+                {alert.resolved_at && (
+                  <span className="mt-0.5 hidden sm:block">
+                    Resolved <TimeAgo value={alert.resolved_at} />
+                  </span>
+                )}
+                {!alert.resolved_at && alert.acknowledged_at && (
+                  <span className="mt-0.5 hidden sm:block">
+                    Acknowledged <TimeAgo value={alert.acknowledged_at} />
+                  </span>
+                )}
+              </div>
+            )}
           </li>
         )
       })}
