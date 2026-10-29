@@ -25,7 +25,7 @@ alembic upgrade head
 uvicorn app.main:app --reload   # http://127.0.0.1:8000
 pytest -q                       # SQLite in-memory; 4 PostgreSQL migration tests skip
 EDGESPHERE_MIGRATION_TEST_PG_URL=postgresql+psycopg://user:pass@localhost:5432/postgres pytest -q
-python -m simulator.device_manage
+python -m simulator.device_manager
 ```
 
 Frontend (`cd frontend`):
