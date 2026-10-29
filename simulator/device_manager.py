@@ -1,77 +1,57 @@
+"""Run one virtual device per key in EDGESPHERE_DEVICE_KEYS (see simulator/config.py).
+
+    EDGESPHERE_DEVICE_KEYS="edg_…,edg_…" python -m simulator.device_manager
+"""
+
+import sys
 import threading
 
+from simulator.config import ConfigError, load_settings
 from simulator.device import Device
-from simulator.config import NUMBER_OF_DEVICES
 
 
-# --------------------------------------------------
-# Device credentials
-# --------------------------------------------------
-# For now, put the real device keys generated
-# by EdgeSphere here.
-#
-# Later we will move these into environment
-# variables / secure storage.
-# --------------------------------------------------
+def main() -> int:
+    try:
+        settings = load_settings()
+    except ConfigError as error:
+        print(f"Configuration error: {error}")
+        return 2
 
-DEVICE_KEYS = {
-    1: "PUT_DEVICE_1_KEY_HERE",
-    2: "PUT_DEVICE_2_KEY_HERE",
-    3: "PUT_DEVICE_3_KEY_HERE",
-    4: "PUT_DEVICE_4_KEY_HERE",
-    5: "PUT_DEVICE_5_KEY_HERE",
-    6: "PUT_DEVICE_6_KEY_HERE",
-    7: "PUT_DEVICE_7_KEY_HERE",
-    8: "PUT_DEVICE_8_KEY_HERE",
-    9: "PUT_DEVICE_9_KEY_HERE",
-    10: "PUT_DEVICE_10_KEY_HERE",
-}
-
-
-# --------------------------------------------------
-# Store running threads
-# --------------------------------------------------
-
-threads = []
-
-
-# --------------------------------------------------
-# Start simulated devices
-# --------------------------------------------------
-
-for device_id in range(1, NUMBER_OF_DEVICES + 1):
-
-    device_key = DEVICE_KEYS.get(device_id)
-
-    if not device_key:
+    if not settings.device_keys:
         print(
-            f"Device {device_id}: "
-            f"No device key configured. Skipping."
+            "No device keys configured.\n"
+            "Register a device in the EdgeSphere UI, copy its key, then run:\n"
+            '  EDGESPHERE_DEVICE_KEYS="<key1>,<key2>" python -m simulator.device_manager'
         )
-        continue
+        return 1
 
-    device = Device(
-        device_id=device_id,
-        device_key=device_key
-    )
-
-    thread = threading.Thread(
-        target=device.run,
-        daemon=True
-    )
-
-    thread.start()
-
-    threads.append(thread)
-
+    temp = f"{settings.start_temp} °C" if settings.start_temp is not None else "normal (28–34 °C)"
     print(
-        f"Started simulated device {device_id}"
+        f"Simulating {len(settings.device_keys)} device(s) -> {settings.server} "
+        f"every {settings.interval:g}s, start temperature {temp}"
     )
 
+    threads = []
+    for device_id, device_key in enumerate(settings.device_keys, start=1):
+        device = Device(
+            device_id=device_id,
+            device_key=device_key,
+            server=settings.server,
+            interval=settings.interval,
+            start_temp=settings.start_temp,
+        )
+        thread = threading.Thread(target=device.run, daemon=True)
+        thread.start()
+        threads.append(thread)
+        print(f"Started simulated device {device_id}")
 
-# --------------------------------------------------
-# Keep simulator running
-# --------------------------------------------------
+    try:
+        for thread in threads:
+            thread.join()
+    except KeyboardInterrupt:
+        print("\nStopping simulator.")
+    return 0
 
-for thread in threads:
-    thread.join()
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -23,8 +23,8 @@ npm run dev
 
 Open http://localhost:5173 and register an account.
 
-To feed live telemetry, register a device in the backend, put its key into
-`simulator/device_manager.py`, then run `python -m simulator.device_manager`.
+To feed live telemetry, register a device, then from the repo root run
+`EDGESPHERE_DEVICE_KEYS="<key>" python -m simulator.device_manager` (see the root README).
 
 ## API access
 

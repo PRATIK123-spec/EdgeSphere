@@ -25,7 +25,9 @@ alembic upgrade head
 uvicorn app.main:app --reload   # http://127.0.0.1:8000
 pytest -q                       # SQLite in-memory; 4 PostgreSQL migration tests skip
 EDGESPHERE_MIGRATION_TEST_PG_URL=postgresql+psycopg://user:pass@localhost:5432/postgres pytest -q
-python -m simulator.device_manager
+EDGESPHERE_DEVICE_KEYS="edg_…,edg_…" python -m simulator.device_manager
+# optional: EDGESPHERE_SERVER (default http://127.0.0.1:8000), EDGESPHERE_INTERVAL (5),
+#           EDGESPHERE_START_TEMP (e.g. 75 to trigger temperature alerts). Keys are never printed.
 ```
 
 Frontend (`cd frontend`):
@@ -207,7 +209,6 @@ irreversible — back up (`pg_dump`) before running migrations on real data.
 - App historically connected to Postgres as a superuser; split runtime vs migration roles.
 - Early commit `7eba1ff` contained `.env` + venv files; secrets were rotated but remain in history.
 - Prod: unauthorized WebSocket attempts sometimes drop without a close frame (suspected Render proxy; unconfirmed).
-- `simulator/device_manager.py` still uses hardcoded placeholder keys; should read from env.
 - `requirements.txt` carries redundant libs (python-jose *and* PyJWT; passlib, pwdlib, bcrypt,
   argon2; psycopg2 *and* psycopg 3; pytest in prod deps). Check imports before removing any.
 - Historical: CRLF line endings in some backend files; 2 fast-refresh lint warnings
@@ -224,7 +225,7 @@ irreversible — back up (`pg_dump`) before running migrations on real data.
 4. **Scalable telemetry** — batch ingest, retention/downsampling, index review with real query plans.
 5. **Multi-tenancy** — organizations, membership, tenant-scoped auth, cross-tenant tests.
 6. Predictive failure · 7. Anomaly detection · 8. Firmware update scheduling ·
-9. Simulator/load testing (env-based keys) · 10. Realtime scaling (Redis pub/sub behind `hub.py`).
+9. Simulator/load testing (settings already env-based) · 10. Realtime scaling (Redis pub/sub behind `hub.py`).
 
 ## How to work in this repo
 

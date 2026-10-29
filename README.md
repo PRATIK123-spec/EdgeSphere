@@ -141,17 +141,28 @@ EDGESPHERE_MIGRATION_TEST_PG_URL=postgresql+psycopg://user:pass@localhost:5432/p
 
 ## Device simulator
 
-Register devices in the UI, put their keys in `simulator/device_manager.py`
-(never commit real keys), then run `python -m simulator.device_manager`.
+```bash
+# One virtual device per key; keys come from Register device / Rotate key in the UI.
+EDGESPHERE_DEVICE_KEYS="edg_…,edg_…" python -m simulator.device_manager
+```
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `EDGESPHERE_SERVER` | `http://127.0.0.1:8000` | API base URL |
+| `EDGESPHERE_DEVICE_KEYS` | (required) | Comma-separated device keys |
+| `EDGESPHERE_INTERVAL` | `5` | Seconds between readings per device |
+| `EDGESPHERE_START_TEMP` | normal 28–34 °C | Starting temperature; e.g. `75` to trigger temperature alerts |
+
+Keys are secrets: the simulator never prints them. Device numbers in its output are local
+labels, not server device IDs.
 
 ## Results
 
-- **75 tests passing** (4 PostgreSQL-only migration tests skip without a database), covering auth, device keys, device management, telemetry pagination and series, the alert lifecycle, analytics, the dashboard, the offline monitor, and the WebSocket protocol.
+- **89 tests passing** (4 PostgreSQL-only migration tests skip without a database), covering auth, device keys, device management, telemetry pagination and series, the alert lifecycle, analytics, the dashboard, the offline monitor, the WebSocket protocol, and the simulator's configuration.
 
 ## Future Work
 
 - Replace the in-process WebSocket hub with a shared broker (e.g. Redis pub/sub) so the API can run multiple workers
-- Load simulator device keys from environment variables instead of `simulator/device_manager.py`
 - Make alert thresholds configurable per device
 
 ## License
