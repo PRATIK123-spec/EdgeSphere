@@ -1,7 +1,7 @@
 # EdgeSphere frontend dev server (Vite) for docker-compose.yml. Development only:
 # production builds are served by Vercel.
 
-FROM node:24-slim
+FROM node:25-slim
 
 WORKDIR /app
 RUN chown node:node /app
