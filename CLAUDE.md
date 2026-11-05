@@ -46,6 +46,11 @@ cp .env.docker.example .env.docker && docker compose up --build   # db + api + w
 `frontend/Dockerfile.dev` (Vite with `--host`, proxy target `EDGESPHERE_API_URL=http://api:8000`).
 Postgres is not published on the host. Production never uses these images.
 
+CI (`.github/workflows/ci.yml`, every push/PR): backend = Python 3.12, `pytest -q` with the
+PG migration tests against a `postgres:16` service; frontend = `npm ci`, lint, build.
+Placeholder `DATABASE_URL`/`SECRET_KEY` are set in the workflow (no real secrets in CI).
+Dependabot: weekly, grouped minor+patch, for pip, npm (`frontend/`), Actions, Docker.
+
 ## Stack (verified from dependency files)
 
 - **Backend:** Python 3.12 (Render pins 3.12.3), FastAPI, SQLAlchemy 2, Alembic,

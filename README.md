@@ -1,5 +1,7 @@
 # EdgeSphere
 
+[![CI](https://github.com/PRATIK123-spec/EdgeSphere/actions/workflows/ci.yml/badge.svg)](https://github.com/PRATIK123-spec/EdgeSphere/actions/workflows/ci.yml)
+
 **Full-stack IoT / edge device management platform: register devices, ingest telemetry, raise alerts, and monitor a fleet in real time.**
 
 <!-- Screenshot: add docs/dashboard.png and uncomment
@@ -152,6 +154,12 @@ pytest -q
 # Include real-PostgreSQL migration tests (creates/drops throwaway databases):
 EDGESPHERE_MIGRATION_TEST_PG_URL=postgresql+psycopg://user:pass@localhost:5432/postgres pytest -q
 ```
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on every push and pull request: the
+backend job runs `pytest -q` including the PostgreSQL migration tests against a
+`postgres:16` service container; the frontend job runs `npm ci`, lint and build.
+Dependabot (`.github/dependabot.yml`) opens weekly grouped minor/patch updates for pip,
+npm, GitHub Actions and Docker base images.
 
 ## Device simulator
 
