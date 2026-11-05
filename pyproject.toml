@@ -1,0 +1,26 @@
+# Tool configuration only; dependencies live in requirements.txt (runtime)
+# and requirements-dev.txt (development and CI).
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+extend-exclude = ["venv", "frontend", "graphify-out"]
+
+[tool.ruff.lint]
+# pycodestyle errors/warnings, Pyflakes, import sorting, bugbear.
+# Not yet enabled: "UP" (pyupgrade, 35 findings: Optional -> X | None, typing imports,
+# datetime.UTC). Its fixes change code, not formatting; enable it in a dedicated change.
+select = ["E", "W", "F", "I", "B"]
+ignore = [
+    "B008",  # FastAPI dependencies are declared as Depends(...) defaults
+    # Existing findings to fix in a follow-up, then remove from this list:
+    "B904",  # 2x raise-without-from in app/core/security.py (JWT decode errors)
+    "E501",  # 5 lines at 121-123 chars; revisit if `ruff format` is adopted
+]
+
+[tool.ruff.lint.per-file-ignores]
+# conftest sets settings before importing the app on purpose.
+"tests/conftest.py" = ["E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "simulator", "tests"]

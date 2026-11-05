@@ -16,7 +16,6 @@ from app.repositories.alert_repository import AlertFilters
 from app.services.device_service import require_owned_device
 from app.utils.time import utc_now
 
-
 ALERT_RULES = (
     {
         "alert_type": "TEMPERATURE",

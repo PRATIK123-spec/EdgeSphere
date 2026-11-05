@@ -22,9 +22,9 @@ Create Date: 2026-10-06
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 revision: str = "0006_alert_lifecycle"
 down_revision: Union[str, Sequence[str], None] = "0005_hash_device_keys"

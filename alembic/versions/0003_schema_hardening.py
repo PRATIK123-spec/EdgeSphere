@@ -17,10 +17,10 @@ Create Date: 2026-10-06
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 
+from alembic import op
 
 revision: str = "0003_schema_hardening"
 down_revision: Union[str, Sequence[str], None] = "0002_create_missing_tables"

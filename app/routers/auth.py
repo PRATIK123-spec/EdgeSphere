@@ -4,9 +4,9 @@ from sqlalchemy.orm import Session
 
 from app.database.dependencies import get_db
 from app.schemas.user import (
+    Token,
     UserRegister,
     UserResponse,
-    Token,
 )
 from app.services import auth_service
 

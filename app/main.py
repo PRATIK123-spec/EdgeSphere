@@ -1,6 +1,6 @@
-from contextlib import asynccontextmanager
 import asyncio
 import logging
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,14 +10,10 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from app.core.config import settings
 from app.models import Alert, Device, Telemetry, User
 from app.realtime.hub import hub
+from app.routers import alert, analytics, dashboard, telemetry, websocket
 from app.routers.auth import router as auth_router
 from app.routers.devices import router as device_router
 from app.routers.users import router as users_router
-from app.routers import alert
-from app.routers import analytics
-from app.routers import dashboard
-from app.routers import telemetry
-from app.routers import websocket
 from app.schemas.common import TOTAL_COUNT_HEADER
 from app.services import device_monitor
 

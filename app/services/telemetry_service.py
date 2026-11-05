@@ -14,8 +14,8 @@ from app.repositories import (
     telemetry_repository,
 )
 from app.schemas.telemetry import TelemetryCreate, TelemetrySeriesPoint, TelemetrySeriesResponse
-from app.services.device_service import require_owned_device
 from app.services import alert_service
+from app.services.device_service import require_owned_device
 from app.utils.time import utc_now, validate_range
 
 

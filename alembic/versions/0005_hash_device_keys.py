@@ -18,9 +18,9 @@ Create Date: 2026-10-06
 import hashlib
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 revision: str = "0005_hash_device_keys"
 down_revision: Union[str, Sequence[str], None] = "0004_device_last_seen_nullable"

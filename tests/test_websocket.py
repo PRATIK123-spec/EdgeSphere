@@ -14,7 +14,6 @@ from app.utils.time import utc_now
 from tests.conftest import TestingSessionLocal, register_and_login
 from tests.helpers import HOT, ingest, make_token, provision, user_id_of, user_with_device
 
-
 _open_sessions: list = []
 
 

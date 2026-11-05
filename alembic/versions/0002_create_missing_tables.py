@@ -13,10 +13,10 @@ Create Date: 2026-10-05
 
 from typing import Sequence, Union
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect
 
+from alembic import op
 
 revision: str = "0002_create_missing_tables"
 down_revision: Union[str, Sequence[str], None] = "0001_drop_devices_name"

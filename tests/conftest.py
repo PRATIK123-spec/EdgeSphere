@@ -1,10 +1,10 @@
 from contextlib import contextmanager
 
+import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
-from fastapi.testclient import TestClient
-import pytest
 
 from app.core.config import settings
 from app.database.base import Base

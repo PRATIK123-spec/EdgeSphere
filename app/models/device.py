@@ -7,13 +7,13 @@ from sqlalchemy import DateTime, ForeignKey, Index, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
-from app.utils.time import utc_now
 from app.utils.device_identity import device_key_prefix, hash_device_key
+from app.utils.time import utc_now
 
 if TYPE_CHECKING:
-    from app.models.user import User
-    from app.models.telemetry import Telemetry
     from app.models.alert import Alert
+    from app.models.telemetry import Telemetry
+    from app.models.user import User
 
 
 class Device(Base):

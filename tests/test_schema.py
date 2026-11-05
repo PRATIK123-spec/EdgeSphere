@@ -2,7 +2,6 @@ from sqlalchemy import inspect
 
 from app.models.device import Device
 
-
 EXPECTED_DEVICE_COLUMNS = {
     "id",
     "display_name",

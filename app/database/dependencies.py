@@ -1,9 +1,9 @@
 from collections.abc import Callable
 from contextlib import AbstractContextManager
 
-from app.database.connection import SessionLocal
-
 from sqlalchemy.orm import Session
+
+from app.database.connection import SessionLocal
 
 SessionFactory = Callable[[], AbstractContextManager[Session]]
 

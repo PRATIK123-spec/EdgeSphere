@@ -1,4 +1,5 @@
 import time
+
 import requests
 
 from simulator.sensor import Sensor
