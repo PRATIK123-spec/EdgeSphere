@@ -13,6 +13,7 @@
 - **Device management**: register, edit, and delete devices; each device gets a one-time API key (stored as a SHA-256 hash) that can be rotated
 - **Telemetry ingestion**: devices push temperature, battery, CPU, and RAM readings authenticated by `X-DEVICE-KEY`
 - **Alerting engine**: rule-based alerts (defaults: temperature > 70 °C, battery < 20 %, CPU/RAM > 90 %) with cooldown, severity, and an acknowledge → resolve lifecycle
+- **Alert notifications**: optional email (SMTP) and Telegram messages for new CRITICAL/HIGH alerts, configured per user
 - **Per-device thresholds**: override any threshold per device on its detail page; charts draw each device's own threshold lines
 - **Real-time updates**: authenticated WebSocket pushes telemetry, device status, and alert events to the dashboard
 - **Offline detection**: a background monitor marks devices offline when they stop reporting
@@ -104,12 +105,28 @@ proxies `/api` to the API and live-reloads `frontend/` edits. Backend code chang
 | `0005_hash_device_keys` | `key_hash` + `key_prefix` replace plaintext `device_key` |
 | `0006_alert_lifecycle` | alert `status`/`acknowledged_at`/`resolved_at`/`telemetry_id`; idempotent evaluation; alert indexes |
 | `0007_device_alert_thresholds` | nullable per-device `alert_temperature_max`/`alert_battery_min`/`alert_cpu_max`/`alert_ram_max` (NULL = default) with range CHECKs |
+| `0008_notification_settings` | per-user notification settings table (no row = notifications off) |
 
 ## Configuration (`.env`)
 
 See `.env.example`. Notable settings: `CORS_ORIGINS` (comma-separated explicit
 origins; empty = same-origin only), `ACCESS_TOKEN_EXPIRE_MINUTES`,
 `DEVICE_OFFLINE_AFTER_SECONDS`, `ALERT_COOLDOWN_SECONDS`, `SQL_ECHO` (development only).
+
+### Alert notifications (optional)
+
+When a device raises a new CRITICAL or HIGH alert, EdgeSphere can send an email and/or a
+Telegram message. Each user turns channels on in **Profile → Notifications** and can send a
+test message. Delivery runs in the background, so ingestion never waits for it; the alert
+cooldown also limits notifications, and messages never contain device keys.
+
+| Variable | Needed for | Notes |
+|---|---|---|
+| `SMTP_HOST`, `SMTP_FROM` | Email | Email is off unless both are set |
+| `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD` | Email | Defaults: 587, no login |
+| `SMTP_STARTTLS` / `SMTP_SSL` | Email | STARTTLS (default) or implicit TLS (port 465) |
+| `TELEGRAM_BOT_TOKEN` | Telegram | From @BotFather; users enter their chat ID |
+| `FRONTEND_URL` | Both (optional) | Adds a link to the device in each message |
 
 ## API overview
 
@@ -120,6 +137,7 @@ Telemetry ingest authenticates the **device** with `X-DEVICE-KEY` instead.
 | Area | Endpoints |
 |---|---|
 | Auth | `POST /auth/register`, `POST /auth/login` (form), `GET /users/me` |
+| Notifications | `GET/PUT /users/me/notifications`, `POST /users/me/notifications/test` |
 | Devices | `GET/POST /devices/`, `GET/PUT/PATCH/DELETE /devices/{id}`, `POST /devices/{id}/rotate-key`, `GET/PUT /devices/{id}/thresholds` |
 | Telemetry | `POST /telemetry/` (device key), `GET /telemetry/latest/{id}`, `GET /telemetry/{id}?limit&offset&since&until`, `GET /telemetry/{id}/series?since&until&max_points`, `DELETE /telemetry/{reading_id}` |
 | Alerts | `GET /alerts/?device_id&severity&alert_type&status&since&until&limit&offset`, `GET /alerts/{device_id}` (same filters), `POST /alerts/{id}/acknowledge`, `POST /alerts/{id}/resolve`, `POST /alerts/check/{device_id}` |
@@ -185,7 +203,7 @@ labels, not server device IDs.
 
 ## Results
 
-- **89 tests passing** (4 PostgreSQL-only migration tests skip without a database), covering auth, device keys, device management, telemetry pagination and series, the alert lifecycle, analytics, the dashboard, the offline monitor, the WebSocket protocol, and the simulator's configuration.
+- **137 tests passing** (4 PostgreSQL-only migration tests skip without a database), covering auth, device keys, device management, per-device thresholds, telemetry pagination and series, the alert lifecycle, notifications (senders mocked), health checks, analytics, the dashboard, the offline monitor, the WebSocket protocol, and the simulator's configuration.
 
 ## Future Work
 

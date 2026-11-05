@@ -36,6 +36,22 @@ class Settings(BaseSettings):
 
     WS_HEARTBEAT_SECONDS: float = 30.0
 
+    # Alert notifications. Each channel is off unless its variables are set.
+    # Email needs SMTP_HOST and SMTP_FROM (+ credentials if the server requires them).
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USERNAME: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM: str = ""
+    SMTP_STARTTLS: bool = True  # STARTTLS on SMTP_PORT (587)
+    SMTP_SSL: bool = False  # implicit TLS instead (usually port 465)
+
+    # Telegram needs a bot token from @BotFather.
+    TELEGRAM_BOT_TOKEN: str = ""
+
+    # Optional dashboard URL for links in notifications, e.g. https://edge-sphere.vercel.app
+    FRONTEND_URL: str = ""
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=True
@@ -44,6 +60,14 @@ class Settings(BaseSettings):
     @property
     def cors_origins(self) -> list[str]:
         return [origin.strip().rstrip("/") for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
+
+    @property
+    def email_notifications_available(self) -> bool:
+        return bool(self.SMTP_HOST.strip() and self.SMTP_FROM.strip())
+
+    @property
+    def telegram_notifications_available(self) -> bool:
+        return bool(self.TELEGRAM_BOT_TOKEN.strip())
 
 
 settings = Settings()

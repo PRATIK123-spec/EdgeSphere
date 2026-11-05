@@ -77,7 +77,9 @@ React dashboard ─────HTTP JWT───────────► │ 
 - `models/` — User, Device, Telemetry, Alert
 - `schemas/` — Pydantic models; `common.py` holds `TOTAL_COUNT_HEADER`
 - `repositories/` — user, device, telemetry, alert, analytics, dashboard
-- `services/` — auth, user, device, telemetry, alert, analytics, dashboard, `device_monitor`
+- `services/` — auth, user, device, telemetry, alert, analytics, dashboard, notification, `device_monitor`
+- `notifications/` — `dispatcher.py` (background thread pool, plain-value jobs, never raises),
+  `email_sender.py` (smtplib), `telegram_sender.py` (httpx, plain text, no parse mode)
 - `routers/` — auth, users, devices, telemetry, alert, analytics, dashboard, websocket, health
 - `realtime/` — `hub.py` (in-process connection hub), `events.py`
 - `utils/` — `device_identity.py`, `time.py`
@@ -158,6 +160,7 @@ List endpoints return an array plus `X-Total-Count`. Caps: telemetry ≤ 1000, a
 | Area | Endpoints |
 |---|---|
 | Auth | `POST /auth/register`, `POST /auth/login` (form body), `GET /users/me` |
+| Notifications | `GET/PUT /users/me/notifications`, `POST /users/me/notifications/test` (202; 409 no channel; 429 within 30 s) |
 | Devices | `GET/POST /devices/`, `GET/PUT/PATCH/DELETE /devices/{id}`, `POST /devices/{id}/rotate-key`, `GET/PUT /devices/{id}/thresholds` |
 | Telemetry | `POST /telemetry/` (X-DEVICE-KEY), `GET /telemetry/latest/{id}`, `GET /telemetry/{id}?limit&offset&since&until`, `GET /telemetry/{id}/series?since&until&max_points`, `DELETE /telemetry/{reading_id}` |
 | Alerts | `GET /alerts/` (filters: device_id, severity, alert_type, status, since, until, limit, offset), `GET /alerts/{device_id}`, `POST /alerts/{id}/acknowledge`, `POST /alerts/{id}/resolve`, `POST /alerts/check/{device_id}`, `DELETE /alerts/{id}` → always 409 |
@@ -206,6 +209,17 @@ Backend (`.env`, see `.env.example`): `DATABASE_URL`, `SECRET_KEY`, `JWT_ALGORIT
 `ACCESS_TOKEN_EXPIRE_MINUTES` (30), `DEBUG`, `SQL_ECHO`, `DEVICE_OFFLINE_AFTER_SECONDS`,
 `DEVICE_MONITOR_INTERVAL_SECONDS`, `DEVICE_MONITOR_ENABLED`, `ALERT_COOLDOWN_SECONDS`,
 `CORS_ORIGINS`, `WS_AUTH_TIMEOUT_SECONDS`, `WS_HEARTBEAT_SECONDS`.
+Notifications (all optional, off when unset): `SMTP_HOST`, `SMTP_PORT` (587), `SMTP_USERNAME`,
+`SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_STARTTLS` (true), `SMTP_SSL` (false), `TELEGRAM_BOT_TOKEN`,
+`FRONTEND_URL` (links in messages). Email is available when `SMTP_HOST` and `SMTP_FROM` are set.
+
+### Alert notifications
+Per-user settings in `notification_settings` (no row = off; email always to the account
+address; Telegram chat ID; `min_severity` HIGH|CRITICAL). `notify_new_alerts` runs after
+`evaluate_reading` in ingestion and `/alerts/check`: only newly created alerts (so the cooldown
+applies), one message per reading, queued on the dispatcher thread pool. It never raises; logs
+record only exception types. Messages carry the device display name, never keys or serials.
+Enabling a channel the server has not configured → 409. Tests mock both senders.
 
 Frontend: `VITE_API_BASE_URL` (build-time; prod = `https://edgesphere-api.onrender.com`;
 changing it needs a Vercel redeploy). `EDGESPHERE_API_URL` = Vite dev-proxy target.
@@ -220,7 +234,7 @@ changing it needs a Vercel redeploy). `EDGESPHERE_API_URL` = Vite dev-proxy targ
 
 ## Database & migrations
 
-Alembic head: `0007_device_alert_thresholds` (0001 → 0007 in `alembic/versions/`). Every schema change
+Alembic head: `0008_notification_settings` (0001 → 0008 in `alembic/versions/`). Every schema change
 needs a new migration; migrations must not import ORM models. `0005_hash_device_keys` is
 irreversible — back up (`pg_dump`) before running migrations on real data.
 

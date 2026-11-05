@@ -5,6 +5,7 @@ import { PageHeader } from '@/components/common/PageHeader'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/features/auth/auth-context'
+import { NotificationsCard } from '@/features/notifications/NotificationsCard'
 import { getSession } from '@/lib/auth-storage'
 import { formatDate, formatDateTime, initials } from '@/lib/format'
 
@@ -68,36 +69,40 @@ export function ProfilePage() {
       <PageHeader title="Profile" description="Your EdgeSphere operator account." />
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <section className="surface p-6 lg:col-span-2" aria-labelledby="account-heading">
-          <div className="flex items-center gap-4">
-            <Avatar className="size-14">
-              <AvatarFallback className="bg-primary/15 text-lg font-semibold text-primary">
-                {initials(user.full_name)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0">
-              <h2 id="account-heading" className="truncate text-lg font-semibold">
-                {user.full_name}
-              </h2>
-              <p className="truncate text-sm text-muted-foreground">
-                Joined {formatDate(user.created_at)}
-              </p>
-            </div>
-          </div>
-
-          <dl className="mt-6 divide-y border-t">
-            {rows.map(({ label, value }) => (
-              <div key={label} className="grid gap-1 py-3 text-sm sm:grid-cols-3 sm:gap-4">
-                <dt className="text-muted-foreground">{label}</dt>
-                <dd className="min-w-0 truncate sm:col-span-2">{value}</dd>
+        <div className="space-y-6 lg:col-span-2">
+          <section className="surface p-6" aria-labelledby="account-heading">
+            <div className="flex items-center gap-4">
+              <Avatar className="size-14">
+                <AvatarFallback className="bg-primary/15 text-lg font-semibold text-primary">
+                  {initials(user.full_name)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <h2 id="account-heading" className="truncate text-lg font-semibold">
+                  {user.full_name}
+                </h2>
+                <p className="truncate text-sm text-muted-foreground">
+                  Joined {formatDate(user.created_at)}
+                </p>
               </div>
-            ))}
-          </dl>
+            </div>
 
-          <p className="mt-4 text-xs text-muted-foreground">
-            Profile editing and password changes are not yet supported by the API.
-          </p>
-        </section>
+            <dl className="mt-6 divide-y border-t">
+              {rows.map(({ label, value }) => (
+                <div key={label} className="grid gap-1 py-3 text-sm sm:grid-cols-3 sm:gap-4">
+                  <dt className="text-muted-foreground">{label}</dt>
+                  <dd className="min-w-0 truncate sm:col-span-2">{value}</dd>
+                </div>
+              ))}
+            </dl>
+
+            <p className="mt-4 text-xs text-muted-foreground">
+              Profile editing and password changes are not yet supported by the API.
+            </p>
+          </section>
+
+          <NotificationsCard />
+        </div>
 
         <section className="surface self-start p-6" aria-labelledby="session-heading">
           <h2 id="session-heading" className="text-sm font-semibold">

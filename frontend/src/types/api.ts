@@ -32,6 +32,33 @@ export interface UserResponse {
   created_at: ApiDateTime
 }
 
+// -------------------------------------------------------- notifications
+
+export type NotificationSeverity = 'HIGH' | 'CRITICAL'
+
+/** app/schemas/notification.py → NotificationSettingsUpdate (PUT /users/me/notifications) */
+export interface NotificationSettingsUpdate {
+  email_enabled: boolean
+  telegram_enabled: boolean
+  telegram_chat_id: string | null
+  /** HIGH = HIGH and CRITICAL alerts; CRITICAL = critical only */
+  min_severity: NotificationSeverity
+}
+
+/** app/schemas/notification.py → NotificationSettingsResponse */
+export interface NotificationSettingsResponse extends NotificationSettingsUpdate {
+  /** Email always goes to the account's own address. */
+  email_address: string
+  /** Whether the server has SMTP_* / TELEGRAM_BOT_TOKEN configured. */
+  email_available: boolean
+  telegram_available: boolean
+}
+
+/** POST /users/me/notifications/test → 202 */
+export interface NotificationTestResponse {
+  queued_channels: string[]
+}
+
 // -------------------------------------------------------------- devices
 
 /** Values the backend currently writes to Device.status. Stored as free text. */

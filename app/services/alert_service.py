@@ -14,6 +14,7 @@ from app.repositories import (
     telemetry_repository,
 )
 from app.repositories.alert_repository import AlertFilters
+from app.services import notification_service
 from app.services.device_service import require_owned_device
 from app.utils.time import utc_now
 
@@ -157,6 +158,7 @@ def check_device(
         )
 
     created = evaluate_reading(device.id, telemetry, db, effective_thresholds(device))
+    notification_service.notify_new_alerts(device, created, db)
     events.publish_alerts(current_user.id, created, created=True)
     return created
 

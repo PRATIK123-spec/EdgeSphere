@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 pytestmark = pytest.mark.skipif(not ADMIN_URL, reason="EDGESPHERE_MIGRATION_TEST_PG_URL not set")
 
-HEAD = "0007_device_alert_thresholds"
+HEAD = "0008_notification_settings"
 
 
 @contextmanager

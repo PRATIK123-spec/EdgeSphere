@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.core.config import settings
 from app.models import Alert, Device, Telemetry, User
+from app.notifications import dispatcher as notification_dispatcher
 from app.realtime.hub import hub
 from app.routers import alert, analytics, dashboard, health, telemetry, websocket
 from app.routers.auth import router as auth_router
@@ -43,6 +44,7 @@ async def lifespan(app: FastAPI):
                 await task
             except asyncio.CancelledError:
                 pass
+        notification_dispatcher.shutdown()
         hub.unbind_loop()
 
 

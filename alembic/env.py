@@ -4,7 +4,7 @@ from alembic import context
 from app.core.config import settings
 from app.database.base import Base
 from app.database.connection import engine
-from app.models import Alert, Device, Telemetry, User
+from app.models import Alert, Device, NotificationSettings, Telemetry, User
 
 config = context.config
 
@@ -19,7 +19,7 @@ config.set_main_option(
 target_metadata = Base.metadata
 
 # Imported so Alembic autogenerate can see the full schema.
-_ = (User, Device, Telemetry, Alert)
+_ = (User, Device, Telemetry, Alert, NotificationSettings)
 
 
 def run_migrations_offline() -> None:

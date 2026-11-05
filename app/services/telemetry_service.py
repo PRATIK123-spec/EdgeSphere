@@ -15,7 +15,7 @@ from app.repositories import (
     telemetry_repository,
 )
 from app.schemas.telemetry import TelemetryCreate, TelemetrySeriesPoint, TelemetrySeriesResponse
-from app.services import alert_service
+from app.services import alert_service, notification_service
 from app.services.device_service import require_owned_device
 from app.utils.time import utc_now, validate_range
 
@@ -63,6 +63,9 @@ def create_telemetry(
         db,
         effective_thresholds(device),
     )
+
+    # Queued in the background; never blocks or fails ingestion.
+    notification_service.notify_new_alerts(device, alerts, db)
 
     owner_id = device.owner_id
     events.publish_telemetry(owner_id, created)
