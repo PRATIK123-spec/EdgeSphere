@@ -203,7 +203,7 @@ labels, not server device IDs.
 
 ## Results
 
-- **137 tests passing** (4 PostgreSQL-only migration tests skip without a database), covering auth, device keys, device management, per-device thresholds, telemetry pagination and series, the alert lifecycle, notifications (senders mocked), health checks, analytics, the dashboard, the offline monitor, the WebSocket protocol, and the simulator's configuration.
+- **136 tests passing** (132 + 4 PostgreSQL-only migration tests, which skip without a database), covering auth, device keys, device management, per-device thresholds, telemetry pagination and series, the alert lifecycle, notifications (senders mocked), health checks, analytics, the dashboard, the offline monitor, the WebSocket protocol, and the simulator's configuration.
 
 ## Future Work
 
