@@ -111,7 +111,7 @@ origins; empty = same-origin only), `ACCESS_TOKEN_EXPIRE_MINUTES`,
 
 ## API overview
 
-All endpoints except `/`, `/auth/register` and `/auth/login` require
+All endpoints except `/`, `/health`, `/ready`, `/auth/register` and `/auth/login` require
 `Authorization: Bearer <jwt>` and only ever touch the caller's own devices.
 Telemetry ingest authenticates the **device** with `X-DEVICE-KEY` instead.
 
@@ -123,6 +123,7 @@ Telemetry ingest authenticates the **device** with `X-DEVICE-KEY` instead.
 | Alerts | `GET /alerts/?device_id&severity&alert_type&status&since&until&limit&offset`, `GET /alerts/{device_id}` (same filters), `POST /alerts/{id}/acknowledge`, `POST /alerts/{id}/resolve`, `POST /alerts/check/{device_id}` |
 | Analytics | `GET /analytics/device/{id}` |
 | Dashboard | `GET /dashboard/summary` |
+| Health | `GET /health` (liveness, no database), `GET /ready` (database reachable: 200, otherwise 503) |
 
 List endpoints return a JSON array and the total matching row count in the
 `X-Total-Count` header. Limits are enforced server-side (telemetry ≤ 1000,
@@ -150,6 +151,8 @@ broker (e.g. Redis pub/sub) behind `app/realtime/hub.py` before scaling out.
 ## Testing
 
 ```bash
+pip install -r requirements-dev.txt   # adds Ruff
+ruff check .
 pytest -q
 # Include real-PostgreSQL migration tests (creates/drops throwaway databases):
 EDGESPHERE_MIGRATION_TEST_PG_URL=postgresql+psycopg://user:pass@localhost:5432/postgres pytest -q

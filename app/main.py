@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from app.core.config import settings
 from app.models import Alert, Device, Telemetry, User
 from app.realtime.hub import hub
-from app.routers import alert, analytics, dashboard, telemetry, websocket
+from app.routers import alert, analytics, dashboard, health, telemetry, websocket
 from app.routers.auth import router as auth_router
 from app.routers.devices import router as device_router
 from app.routers.users import router as users_router
@@ -103,6 +103,7 @@ app.include_router(analytics.router)
 app.include_router(dashboard.router)
 app.include_router(websocket.router)
 app.include_router(alert.router)
+app.include_router(health.router)
 
 
 @app.get("/")

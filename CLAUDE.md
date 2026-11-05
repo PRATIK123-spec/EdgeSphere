@@ -23,6 +23,8 @@ pip install -r requirements.txt
 cp .env.example .env            # set DATABASE_URL and a strong SECRET_KEY
 alembic upgrade head
 uvicorn app.main:app --reload   # http://127.0.0.1:8000
+pip install -r requirements-dev.txt   # adds Ruff (dev/CI only, not on Render)
+ruff check .                    # config in pyproject.toml; CI fails on findings
 pytest -q                       # SQLite in-memory; 4 PostgreSQL migration tests skip
 EDGESPHERE_MIGRATION_TEST_PG_URL=postgresql+psycopg://user:pass@localhost:5432/postgres pytest -q
 EDGESPHERE_DEVICE_KEYS="edg_…,edg_…" python -m simulator.device_manager
@@ -76,7 +78,7 @@ React dashboard ─────HTTP JWT───────────► │ 
 - `schemas/` — Pydantic models; `common.py` holds `TOTAL_COUNT_HEADER`
 - `repositories/` — user, device, telemetry, alert, analytics, dashboard
 - `services/` — auth, user, device, telemetry, alert, analytics, dashboard, `device_monitor`
-- `routers/` — auth, users, devices, telemetry, alert, analytics, dashboard, websocket
+- `routers/` — auth, users, devices, telemetry, alert, analytics, dashboard, websocket, health
 - `realtime/` — `hub.py` (in-process connection hub), `events.py`
 - `utils/` — `device_identity.py`, `time.py`
 - `main.py` — app, lifespan (binds hub to loop, starts monitor), CORS, error handlers
@@ -150,7 +152,7 @@ same credentials, because an earlier attempt may have created the account.
 
 ## API (verified against routers)
 
-All endpoints except `/`, `/auth/register`, `/auth/login` need `Authorization: Bearer <jwt>`.
+All endpoints except `/`, `/health`, `/ready`, `/auth/register`, `/auth/login` need `Authorization: Bearer <jwt>`.
 List endpoints return an array plus `X-Total-Count`. Caps: telemetry ≤ 1000, alerts ≤ 500 per page.
 
 | Area | Endpoints |
@@ -162,6 +164,7 @@ List endpoints return an array plus `X-Total-Count`. Caps: telemetry ≤ 1000, a
 | Analytics | `GET /analytics/device/{id}` |
 | Dashboard | `GET /dashboard/summary` |
 | Realtime | `WS /ws` |
+| Health | `GET /health` (liveness, no DB), `GET /ready` (`SELECT 1`; 200 `{"status":"ready"}` or 503 `{"status":"unavailable"}`, never internals) |
 
 ### WebSocket protocol
 1. Connect, send `{"type":"auth","token":"<jwt>"}` within `WS_AUTH_TIMEOUT_SECONDS` (10 s). Token never in the URL.
@@ -224,8 +227,13 @@ irreversible — back up (`pg_dump`) before running migrations on real data.
 - Prod: unauthorized WebSocket attempts sometimes drop without a close frame (suspected Render proxy; unconfirmed).
 - `requirements.txt` carries redundant libs (python-jose *and* PyJWT; passlib, pwdlib, bcrypt,
   argon2; psycopg2 *and* psycopg 3; pytest in prod deps). Check imports before removing any.
-- Historical: CRLF line endings in some backend files; 2 fast-refresh lint warnings
-  (`button.tsx`, `tabs.tsx` export variants alongside components).
+- 2 fast-refresh lint warnings (`button.tsx`, `tabs.tsx` export variants alongside components).
+  Line endings are LF everywhere, enforced by `.gitattributes`.
+- Ruff follow-ups (listed in `pyproject.toml`): pyupgrade `UP` not enabled (35 findings),
+  B904 ×2 in `core/security.py`, E501 ×5. `ruff format` not adopted (would touch 44 files).
+- `render.yaml` still has `healthCheckPath: /`; switch it to `/ready` (or `/health` to avoid
+  restarts when only the DB is down) in a change that is deployed deliberately.
+- The engine has no DB connect timeout, so `/ready` may hang if the DB host silently drops packets.
 - Not yet assessed: rate limiting, telemetry retention, alert dedup under concurrent ingestion.
 
 ## Roadmap (priority order)
