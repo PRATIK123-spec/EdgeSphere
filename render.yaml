@@ -14,7 +14,9 @@ services:
     # starts. If they fail, the new deploy never goes live. Single process:
     # the WebSocket hub is in-memory, so do not add --workers.
     startCommand: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips '*'
-    healthCheckPath: /
+    # Liveness only (no DB). /ready also checks the database; use it for external
+    # monitoring, not here, or a brief DB outage would restart the API / fail deploys.
+    healthCheckPath: /health
     autoDeploy: true
     envVars:
       - key: PYTHON_VERSION

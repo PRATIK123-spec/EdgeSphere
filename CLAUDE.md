@@ -227,7 +227,8 @@ changing it needs a Vercel redeploy). `EDGESPHERE_API_URL` = Vite dev-proxy targ
 ## Deployment
 
 - **Render** (`render.yaml`): start command runs `alembic upgrade head` then uvicorn, **single
-  process — never add `--workers`** (in-process WebSocket hub). Free plan sleeps; first request
+  process — never add `--workers`** (in-process WebSocket hub). `healthCheckPath: /health`
+  (liveness, no DB; `/ready` is for external monitoring). Free plan sleeps; first request
   can take 30–60 s+ and may 502 during wake-up. Prod `CORS_ORIGINS=https://edge-sphere.vercel.app`.
 - **Vercel** (`frontend/vercel.json`): SPA rewrite of all paths to `index.html`.
 - `main` auto-deploys on Render. Treat any push to `main` as a production deploy.
@@ -251,8 +252,6 @@ irreversible — back up (`pg_dump`) before running migrations on real data.
   Line endings are LF everywhere, enforced by `.gitattributes`.
 - Ruff follow-ups (listed in `pyproject.toml`): pyupgrade `UP` not enabled (35 findings),
   B904 ×2 in `core/security.py`, E501 ×5. `ruff format` not adopted (would touch 44 files).
-- `render.yaml` still has `healthCheckPath: /`; switch it to `/ready` (or `/health` to avoid
-  restarts when only the DB is down) in a change that is deployed deliberately.
 - The engine has no DB connect timeout, so `/ready` may hang if the DB host silently drops packets.
 - Not yet assessed: rate limiting, telemetry retention, alert dedup under concurrent ingestion.
 
