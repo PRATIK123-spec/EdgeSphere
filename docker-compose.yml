@@ -1,0 +1,45 @@
+# Local development stack: PostgreSQL 16 + FastAPI + Vite dev server.
+#   cp .env.docker.example .env.docker   # then edit the placeholders
+#   docker compose up --build
+# App: http://localhost:5173 (Vite proxies /api to the api service). API: http://localhost:8000/docs
+# Not used in production (Render uses render.yaml, Vercel builds the frontend).
+
+services:
+  db:
+    image: postgres:16
+    env_file: .env.docker
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # No published port: avoids clashing with a PostgreSQL already on 5432.
+
+  api:
+    build: .
+    env_file: .env.docker
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    environment:
+      EDGESPHERE_API_URL: http://api:8000
+    depends_on:
+      - api
+    ports:
+      - "5173:5173"
+    volumes:
+      # Live reload of source edits; node_modules stays the one installed in the image.
+      - ./frontend:/app
+      - /app/node_modules
+
+volumes:
+  pgdata:

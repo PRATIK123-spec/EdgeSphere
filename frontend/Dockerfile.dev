@@ -1,0 +1,18 @@
+# EdgeSphere frontend dev server (Vite) for docker-compose.yml. Development only:
+# production builds are served by Vercel.
+
+FROM node:24-slim
+
+WORKDIR /app
+RUN chown node:node /app
+USER node
+
+COPY --chown=node:node package.json package-lock.json ./
+RUN npm ci
+
+COPY --chown=node:node . .
+
+EXPOSE 5173
+
+# --host so the dev server is reachable from outside the container.
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]

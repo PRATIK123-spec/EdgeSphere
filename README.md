@@ -56,6 +56,7 @@ EdgeSphere/
 ├── simulator/          # virtual devices that stream telemetry
 ├── tests/              # pytest suite
 ├── render.yaml         # Render blueprint
+├── docker-compose.yml  # local dev stack (Dockerfile, frontend/Dockerfile.dev)
 └── requirements.txt
 ```
 
@@ -70,6 +71,19 @@ uvicorn app.main:app --reload # http://127.0.0.1:8000  (OpenAPI docs at /docs)
 
 cd frontend && npm install && npm run dev   # http://localhost:5173 (proxies /api and /api/ws)
 ```
+
+### With Docker (local development)
+
+```bash
+cp .env.docker.example .env.docker   # replace the placeholders (keep DATABASE_URL in sync)
+docker compose up --build            # app: http://localhost:5173, API: http://localhost:8000/docs
+docker compose down                  # stop; add -v to also delete the database volume
+```
+
+The stack is PostgreSQL 16 (named volume `pgdata`, not published on the host), the API
+(runs `alembic upgrade head`, then a single uvicorn worker) and the Vite dev server, which
+proxies `/api` to the API and live-reloads `frontend/` edits. Backend code changes need
+`docker compose up --build api`. Production does not use these images.
 
 ### Upgrading an existing database
 

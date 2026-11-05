@@ -5,7 +5,7 @@ when a feature lands or a decision is made, update the relevant section.
 
 ## What this is
 
-EdgeSphere is a full-stack IoT / edge device management platform: users registe
+EdgeSphere is a full-stack IoT / edge device management platform: users register
 devices, devices push telemetry, the backend raises alerts and tracks online/offline
 status, and a React dashboard shows everything in real time. It is also a portfolio
 project, so code quality, security and honest data matter.
@@ -37,6 +37,14 @@ npm run dev      # http://localhost:5173, proxies /api and /api/ws to FastAPI
 npm run build    # tsc -b && vite build — must pass before any frontend change is done
 npm run lint     # oxlint (not ESLint)
 ```
+
+Docker (local dev only; Docker is not installed in this WSL yet):
+```bash
+cp .env.docker.example .env.docker && docker compose up --build   # db + api + web (Vite :5173)
+```
+`Dockerfile` (API, python:3.12-slim, non-root, migrates then single uvicorn worker),
+`frontend/Dockerfile.dev` (Vite with `--host`, proxy target `EDGESPHERE_API_URL=http://api:8000`).
+Postgres is not published on the host. Production never uses these images.
 
 ## Stack (verified from dependency files)
 
@@ -163,7 +171,7 @@ List endpoints return an array plus `X-Total-Count`. Caps: telemetry ≤ 1000, a
   RAM > 90 % → HIGH. Cooldown `ALERT_COOLDOWN_SECONDS` (300) per device + type.
   Lifecycle: active → acknowledged → resolved. Evaluation is idempotent per reading
   (DB uniqueness on `telemetry_id`). Alerts are never deleted.
-- **Device status:** monitor runs every `DEVICE_MONITOR_INTERVAL_SECONDS` (15); offline afte
+- **Device status:** monitor runs every `DEVICE_MONITOR_INTERVAL_SECONDS` (15); offline after
   `DEVICE_OFFLINE_AFTER_SECONDS` (60) without telemetry. `last_seen` is NULL until first reading.
 - **Charts:** show gaps as breaks, never interpolate across outages; single reading = single point.
 
@@ -217,8 +225,8 @@ irreversible — back up (`pg_dump`) before running migrations on real data.
 
 ## Roadmap (priority order)
 
-1. **Frontend visual redesign** — done on branch `frontend-redesign` (design system above,
-   all pages, cold-start handling). Not yet merged or deployed.
+1. **Frontend visual redesign** — done and deployed on `main` (design system above,
+   all pages, cold-start handling).
 2. **Security hardening** — least-privilege DB role, git-history secret audit, JWT storage
    review, rate limiting, dependency audit.
 3. **Observability** — structured logs with redaction, health/readiness checks, request IDs, metrics.
