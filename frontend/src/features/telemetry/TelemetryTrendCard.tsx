@@ -9,6 +9,7 @@ import { useLatestTelemetry, useRecentTelemetry } from '@/features/telemetry/hoo
 import { MetricChart } from '@/features/telemetry/MetricChart'
 import { buildSeries, metricStats, toReadings } from '@/features/telemetry/series'
 import { METRICS } from '@/features/telemetry/thresholds'
+import { useDeviceMetrics } from '@/features/telemetry/use-device-metrics'
 import { formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -30,6 +31,7 @@ export function TelemetryTrendCard({
   const recent = useRecentTelemetry(deviceId, TREND_READINGS)
   const latest = useLatestTelemetry(deviceId)
   const live = useRealtimeLive()
+  const metrics = useDeviceMetrics(deviceId)
 
   const readings = useMemo(() => toReadings(recent.data?.items ?? []), [recent.data])
   const series = useMemo(() => buildSeries(readings), [readings])
@@ -83,7 +85,7 @@ export function TelemetryTrendCard({
         />
       ) : (
         <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {METRICS.map((spec) => {
+          {metrics.map((spec) => {
             const stats = metricStats(readings, spec.key)
             return (
               <li key={spec.key} className="rounded-lg border bg-background/40 p-3">

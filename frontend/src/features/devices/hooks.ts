@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { fetchDevice, fetchDevices } from '@/features/devices/api'
+import { fetchDevice, fetchDeviceThresholds, fetchDevices } from '@/features/devices/api'
 import { useRealtimeLive } from '@/features/realtime/realtime-context'
 
 export const deviceKeys = {
   all: ['devices'] as const,
   list: () => [...deviceKeys.all, 'list'] as const,
   detail: (id: number) => [...deviceKeys.all, 'detail', id] as const,
+  thresholds: (id: number) => [...deviceKeys.all, 'thresholds', id] as const,
 }
 
 /**
@@ -23,6 +24,15 @@ export function useDevices() {
     queryFn: ({ signal }) => fetchDevices(signal),
     refetchInterval: live ? false : DEVICE_REFRESH_MS,
     staleTime: 0,
+  })
+}
+
+/** The device's own threshold overrides (only changed by the user, so not polled). */
+export function useDeviceThresholds(id: number) {
+  return useQuery({
+    queryKey: deviceKeys.thresholds(id),
+    queryFn: ({ signal }) => fetchDeviceThresholds(id, signal),
+    enabled: Number.isInteger(id) && id > 0,
   })
 }
 

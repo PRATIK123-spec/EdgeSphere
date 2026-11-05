@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.alert_thresholds import AlertThresholds, effective_thresholds
 from app.core.config import settings
 from app.models.alert import Alert
 from app.models.telemetry import Telemetry
@@ -16,30 +17,37 @@ from app.repositories.alert_repository import AlertFilters
 from app.services.device_service import require_owned_device
 from app.utils.time import utc_now
 
+
+def _fmt(value: float) -> str:
+    return f"{value:g}"  # 70.0 -> "70", 72.5 -> "72.5"
+
+
+# Each rule compares one reading against the device's effective thresholds
+# (per-device overrides, falling back to DEFAULT_THRESHOLDS).
 ALERT_RULES = (
     {
         "alert_type": "TEMPERATURE",
         "severity": "CRITICAL",
-        "message": "Temperature exceeded 70°C",
-        "triggered": lambda telemetry: telemetry.temperature > 70,
+        "message": lambda th: f"Temperature exceeded {_fmt(th.temperature_max)}°C",
+        "triggered": lambda telemetry, th: telemetry.temperature > th.temperature_max,
     },
     {
         "alert_type": "BATTERY",
         "severity": "HIGH",
-        "message": "Battery below 20%",
-        "triggered": lambda telemetry: telemetry.battery < 20,
+        "message": lambda th: f"Battery below {_fmt(th.battery_min)}%",
+        "triggered": lambda telemetry, th: telemetry.battery < th.battery_min,
     },
     {
         "alert_type": "CPU",
         "severity": "HIGH",
-        "message": "CPU usage above 90%",
-        "triggered": lambda telemetry: telemetry.cpu_usage > 90,
+        "message": lambda th: f"CPU usage above {_fmt(th.cpu_max)}%",
+        "triggered": lambda telemetry, th: telemetry.cpu_usage > th.cpu_max,
     },
     {
         "alert_type": "RAM",
         "severity": "HIGH",
-        "message": "RAM usage above 90%",
-        "triggered": lambda telemetry: telemetry.ram_usage > 90,
+        "message": lambda th: f"RAM usage above {_fmt(th.ram_max)}%",
+        "triggered": lambda telemetry, th: telemetry.ram_usage > th.ram_max,
     },
 )
 
@@ -64,9 +72,11 @@ def evaluate_reading(
     device_id: int,
     telemetry: Telemetry,
     db: Session,
+    thresholds: AlertThresholds | None = None,
 ) -> list[Alert]:
     """
-    Evaluate the alert rules for one reading, exactly once.
+    Evaluate the alert rules for one reading, exactly once, against the
+    device's thresholds (loaded from the reading's device when not given).
 
     Idempotency is guaranteed at two levels:
     - the reading's `alerts_evaluated` flag: an evaluated reading is never
@@ -78,9 +88,12 @@ def evaluate_reading(
     if telemetry.alerts_evaluated:
         return []
 
+    if thresholds is None:
+        thresholds = effective_thresholds(telemetry.device)
+
     candidates = []
     for rule in ALERT_RULES:
-        if not rule["triggered"](telemetry):
+        if not rule["triggered"](telemetry, thresholds):
             continue
 
         existing = alert_repository.get_latest_by_type(
@@ -98,7 +111,7 @@ def evaluate_reading(
                 telemetry_id=telemetry.id,
                 alert_type=rule["alert_type"],
                 severity=rule["severity"],
-                message=rule["message"],
+                message=rule["message"](thresholds),
                 status="active",
             )
         )
@@ -143,7 +156,7 @@ def check_device(
             detail="No telemetry found"
         )
 
-    created = evaluate_reading(device.id, telemetry, db)
+    created = evaluate_reading(device.id, telemetry, db, effective_thresholds(device))
     events.publish_alerts(current_user.id, created, created=True)
     return created
 

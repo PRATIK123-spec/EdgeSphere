@@ -3,9 +3,10 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Index, String
+from sqlalchemy import CheckConstraint, DateTime, Float, ForeignKey, Index, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.core.alert_thresholds import effective_thresholds
 from app.database.base import Base
 from app.utils.device_identity import device_key_prefix, hash_device_key
 from app.utils.time import utc_now
@@ -20,6 +21,15 @@ class Device(Base):
     __tablename__ = "devices"
     __table_args__ = (
         Index("ix_devices_last_seen", "last_seen"),
+        CheckConstraint(
+            "alert_temperature_max IS NULL OR alert_temperature_max BETWEEN -100 AND 250",
+            name="ck_devices_alert_temperature_max",
+        ),
+        CheckConstraint(
+            "alert_battery_min IS NULL OR alert_battery_min BETWEEN 0 AND 100", name="ck_devices_alert_battery_min"
+        ),
+        CheckConstraint("alert_cpu_max IS NULL OR alert_cpu_max BETWEEN 0 AND 100", name="ck_devices_alert_cpu_max"),
+        CheckConstraint("alert_ram_max IS NULL OR alert_ram_max BETWEEN 0 AND 100", name="ck_devices_alert_ram_max"),
     )
 
     # ----------------------------------
@@ -148,6 +158,23 @@ class Device(Base):
         DateTime,
         nullable=True
     )
+
+    # ----------------------------------
+    # Per-device alert thresholds
+    # NULL = use the default (app/core/alert_thresholds.py).
+    # ----------------------------------
+    alert_temperature_max: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    alert_battery_min: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    alert_cpu_max: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    alert_ram_max: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+    @property
+    def alert_thresholds(self) -> dict[str, float]:
+        """Effective thresholds (overrides merged with defaults)."""
+        return effective_thresholds(self).as_dict()
 
     # ----------------------------------
     # Device Registration Time

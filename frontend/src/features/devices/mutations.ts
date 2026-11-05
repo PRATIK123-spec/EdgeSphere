@@ -1,6 +1,12 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
-import { createDevice, deleteDevice, rotateDeviceKey, updateDevice } from '@/features/devices/api'
+import {
+  createDevice,
+  deleteDevice,
+  rotateDeviceKey,
+  updateDevice,
+  updateDeviceThresholds,
+} from '@/features/devices/api'
 import { deviceKeys } from '@/features/devices/hooks'
 import { alertKeys } from '@/features/alerts/hooks'
 import { analyticsKeys } from '@/features/analytics/hooks'
@@ -8,7 +14,7 @@ import { dashboardKeys } from '@/features/dashboard/hooks'
 import { telemetryKeys } from '@/features/telemetry/hooks'
 import { isApiError } from '@/lib/api-client'
 import { invalidateSoon } from '@/lib/query-client'
-import type { DeviceCreate, DeviceResponse } from '@/types/api'
+import type { DeviceCreate, DeviceResponse, DeviceThresholdsUpdate } from '@/types/api'
 
 /**
  * POST /devices/.
@@ -58,6 +64,25 @@ export function useUpdateDevice(id: number) {
     mutationFn: (data: DeviceCreate) => updateDevice(id, data),
     onSuccess: (device) => {
       queryClient.setQueryData(deviceKeys.detail(id), device)
+      invalidateSoon(queryClient, deviceKeys.list())
+    },
+  })
+}
+
+/**
+ * PUT /devices/{id}/thresholds. Writes the new effective values into the
+ * cached device so charts and readouts switch to them immediately.
+ */
+export function useUpdateDeviceThresholds(id: number) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (data: DeviceThresholdsUpdate) => updateDeviceThresholds(id, data),
+    onSuccess: (result) => {
+      queryClient.setQueryData(deviceKeys.thresholds(id), result)
+      queryClient.setQueryData<DeviceResponse>(deviceKeys.detail(id), (old) =>
+        old ? { ...old, alert_thresholds: result.effective } : old,
+      )
       invalidateSoon(queryClient, deviceKeys.list())
     },
   })

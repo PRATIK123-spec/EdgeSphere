@@ -158,7 +158,7 @@ List endpoints return an array plus `X-Total-Count`. Caps: telemetry ≤ 1000, a
 | Area | Endpoints |
 |---|---|
 | Auth | `POST /auth/register`, `POST /auth/login` (form body), `GET /users/me` |
-| Devices | `GET/POST /devices/`, `GET/PUT/PATCH/DELETE /devices/{id}`, `POST /devices/{id}/rotate-key` |
+| Devices | `GET/POST /devices/`, `GET/PUT/PATCH/DELETE /devices/{id}`, `POST /devices/{id}/rotate-key`, `GET/PUT /devices/{id}/thresholds` |
 | Telemetry | `POST /telemetry/` (X-DEVICE-KEY), `GET /telemetry/latest/{id}`, `GET /telemetry/{id}?limit&offset&since&until`, `GET /telemetry/{id}/series?since&until&max_points`, `DELETE /telemetry/{reading_id}` |
 | Alerts | `GET /alerts/` (filters: device_id, severity, alert_type, status, since, until, limit, offset), `GET /alerts/{device_id}`, `POST /alerts/{id}/acknowledge`, `POST /alerts/{id}/resolve`, `POST /alerts/check/{device_id}`, `DELETE /alerts/{id}` → always 409 |
 | Analytics | `GET /analytics/device/{id}` |
@@ -176,7 +176,13 @@ List endpoints return an array plus `X-Total-Count`. Caps: telemetry ≤ 1000, a
 ## Domain rules
 
 - **Alerts:** temperature > 70 °C → CRITICAL; battery < 20 % → HIGH; CPU > 90 % → HIGH;
-  RAM > 90 % → HIGH. Cooldown `ALERT_COOLDOWN_SECONDS` (300) per device + type.
+  RAM > 90 % → HIGH. These are defaults (`app/core/alert_thresholds.py`); each device may
+  override any of them (`devices.alert_*` columns, NULL = default) via
+  `GET/PUT /devices/{id}/thresholds` (PUT replaces all four; null = default; owner only).
+  `DeviceResponse.alert_thresholds` carries the effective values; the frontend builds metric
+  specs from them (`metricsFor`, `useDeviceMetrics`), so charts and readouts use each
+  device's own lines. `METRICS` (defaults) is only for labels/skeletons. Changes apply to new
+  readings; alert messages include the threshold used ("Temperature exceeded 50°C"). Cooldown `ALERT_COOLDOWN_SECONDS` (300) per device + type.
   Lifecycle: active → acknowledged → resolved. Evaluation is idempotent per reading
   (DB uniqueness on `telemetry_id`). Alerts are never deleted.
 - **Device status:** monitor runs every `DEVICE_MONITOR_INTERVAL_SECONDS` (15); offline after
@@ -214,7 +220,7 @@ changing it needs a Vercel redeploy). `EDGESPHERE_API_URL` = Vite dev-proxy targ
 
 ## Database & migrations
 
-Alembic head: `0006_alert_lifecycle` (0001 → 0006 in `alembic/versions/`). Every schema change
+Alembic head: `0007_device_alert_thresholds` (0001 → 0007 in `alembic/versions/`). Every schema change
 needs a new migration; migrations must not import ORM models. `0005_hash_device_keys` is
 irreversible — back up (`pg_dump`) before running migrations on real data.
 

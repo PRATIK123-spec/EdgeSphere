@@ -39,6 +39,7 @@ function Value({ spec, value }: { spec: MetricSpec; value: number }) {
  */
 export function TelemetryTable({
   rows,
+  metrics = METRICS,
   total,
   page,
   pageSize,
@@ -46,6 +47,8 @@ export function TelemetryTable({
   loading = false,
 }: {
   rows: TelemetryResponse[]
+  /** The device's metric specs (its own alert thresholds). */
+  metrics?: MetricSpec[]
   total: number
   page: number
   pageSize: number
@@ -76,7 +79,7 @@ export function TelemetryTable({
           <TableHeader>
             <TableRow className="hover:bg-transparent">
               <TableHead className="pl-4">Time</TableHead>
-              {METRICS.map((m) => (
+              {metrics.map((m) => (
                 <TableHead key={m.key} className="px-1.5 text-right last:pr-4 sm:px-2">
                   <span className="sm:hidden">
                     {m.short} <span className="font-normal text-muted-foreground">{m.unit}</span>
@@ -89,7 +92,7 @@ export function TelemetryTable({
           <TableBody>
             {rows.map((r) => {
               const date = parseApiDate(r.created_at)
-              const breached = METRICS.some((m) => m.breached(r[m.key]))
+              const breached = metrics.some((m) => m.breached(r[m.key]))
               return (
                 <TableRow key={r.id} className={cn(breached && 'bg-status-critical/5')}>
                   <TableCell className="pl-4 whitespace-nowrap">
@@ -98,7 +101,7 @@ export function TelemetryTable({
                       <span className="block text-xs text-muted-foreground">{date ? dateFmt.format(date) : ''}</span>
                     </time>
                   </TableCell>
-                  {METRICS.map((m) => (
+                  {metrics.map((m) => (
                     <TableCell key={m.key} className="px-1.5 text-right last:pr-4 sm:px-2">
                       <Value spec={m} value={r[m.key]} />
                     </TableCell>

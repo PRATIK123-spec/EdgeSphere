@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDeviceAnalytics } from '@/features/analytics/hooks'
 import { DeviceSelect } from '@/features/devices/DeviceSelect'
-import { METRICS } from '@/features/telemetry/thresholds'
+import { METRICS, metricsFor } from '@/features/telemetry/thresholds'
 import { formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { DeviceResponse } from '@/types/api'
@@ -27,13 +27,14 @@ export function DeviceInsightsCard({
   onSelect: (deviceId: number) => void
 }) {
   const analytics = useDeviceAnalytics(current.id)
+  const [temperature, battery, cpu, ram] = metricsFor(current.alert_thresholds)
 
   const rows = analytics.data
     ? [
-        { spec: METRICS[0]!, value: analytics.data.average_temperature },
-        { spec: METRICS[1]!, value: analytics.data.average_battery },
-        { spec: METRICS[2]!, value: analytics.data.average_cpu },
-        { spec: METRICS[3]!, value: analytics.data.average_ram },
+        { spec: temperature!, value: analytics.data.average_temperature },
+        { spec: battery!, value: analytics.data.average_battery },
+        { spec: cpu!, value: analytics.data.average_cpu },
+        { spec: ram!, value: analytics.data.average_ram },
       ]
     : []
 

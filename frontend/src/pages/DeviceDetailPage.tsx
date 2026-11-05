@@ -9,6 +9,7 @@ import { TimeAgo } from '@/components/common/TimeAgo'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { DeleteDeviceDialog } from '@/features/devices/DeleteDeviceDialog'
+import { DeviceThresholdsCard } from '@/features/devices/DeviceThresholdsCard'
 import { EditDeviceDialog } from '@/features/devices/EditDeviceDialog'
 import { RotateKeyDialog } from '@/features/devices/RotateKeyDialog'
 import { useDevice } from '@/features/devices/hooks'
@@ -156,6 +157,7 @@ export function DeviceDetailPage() {
             </div>
             <div className="space-y-6">
               <DeviceSpecs device={device} />
+              <DeviceThresholdsCard deviceId={device.id} />
             </div>
           </div>
         </TabsContent>

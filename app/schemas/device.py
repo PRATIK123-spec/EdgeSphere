@@ -1,7 +1,9 @@
 from datetime import datetime
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from app.core.alert_thresholds import LIMITS
 from app.schemas.common import BoundedText
 
 # Limits match the devices table columns.
@@ -40,6 +42,43 @@ class DeviceUpdate(BaseModel):
         return self
 
 
+def _threshold(name: str):
+    low, high = LIMITS[name]
+    return Annotated[float, Field(ge=low, le=high, allow_inf_nan=False)]
+
+
+class AlertThresholdValues(BaseModel):
+    """Effective thresholds: temperature/CPU/RAM alert above, battery alert below."""
+
+    temperature_max: float
+    battery_min: float
+    cpu_max: float
+    ram_max: float
+
+
+class DeviceThresholdsUpdate(BaseModel):
+    """
+    Body for PUT /devices/{id}/thresholds. Replaces all four overrides:
+    a missing or null field means "use the default".
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    temperature_max: _threshold("temperature_max") | None = None
+    battery_min: _threshold("battery_min") | None = None
+    cpu_max: _threshold("cpu_max") | None = None
+    ram_max: _threshold("ram_max") | None = None
+
+
+class DeviceThresholdsResponse(BaseModel):
+    device_id: int
+    # What the alert engine uses for this device.
+    effective: AlertThresholdValues
+    # The device's own values; null = uses the default.
+    overrides: DeviceThresholdsUpdate
+    defaults: AlertThresholdValues
+
+
 class DeviceResponse(BaseModel):
     id: int
     display_name: str
@@ -54,6 +93,8 @@ class DeviceResponse(BaseModel):
     created_at: datetime
     # Non-secret identifier of the current key (e.g. "edg_1a2b3c4d").
     key_prefix: str
+    # Effective alert thresholds (per-device overrides merged with defaults).
+    alert_thresholds: AlertThresholdValues
 
     model_config = ConfigDict(from_attributes=True)
 

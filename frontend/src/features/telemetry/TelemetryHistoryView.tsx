@@ -11,6 +11,7 @@ import { MetricChart, MetricChartLegend } from '@/features/telemetry/MetricChart
 import { TIME_RANGES, formatBucket, fromServerSeries, seriesStats, type TimeRange } from '@/features/telemetry/series'
 import { TelemetryTable } from '@/features/telemetry/TelemetryTable'
 import { METRICS } from '@/features/telemetry/thresholds'
+import { useDeviceMetrics } from '@/features/telemetry/use-device-metrics'
 import { formatNumber, parseApiDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -53,6 +54,7 @@ export function TelemetryHistoryView({ deviceId }: { deviceId: number }) {
   const seriesQuery = useTelemetrySeries(deviceId, { key: rangeKey, ms: range.ms }, anchor, MAX_CHART_POINTS)
   const pageQuery = useTelemetryPage(deviceId, { limit: PAGE_SIZE, offset: page * PAGE_SIZE, since, until })
   const latest = useLatestTelemetry(deviceId)
+  const metrics = useDeviceMetrics(deviceId)
 
   const series = seriesQuery.data
   const chart = useMemo(() => (series ? fromServerSeries(series) : null), [series])
@@ -155,7 +157,7 @@ export function TelemetryHistoryView({ deviceId }: { deviceId: number }) {
           </div>
 
           <div className={cn('grid gap-4 transition-opacity md:grid-cols-2', seriesQuery.isPlaceholderData && 'opacity-60')}>
-            {METRICS.map((spec) => {
+            {metrics.map((spec) => {
               const stats = seriesStats(series!, spec.key)
               return (
                 <section key={spec.key} className="surface p-4" aria-labelledby={`chart-${spec.key}`}>
@@ -206,6 +208,7 @@ export function TelemetryHistoryView({ deviceId }: { deviceId: number }) {
           ) : pageQuery.data ? (
             <TelemetryTable
               rows={pageQuery.data.items}
+              metrics={metrics}
               total={pageQuery.data.total}
               page={page}
               pageSize={PAGE_SIZE}

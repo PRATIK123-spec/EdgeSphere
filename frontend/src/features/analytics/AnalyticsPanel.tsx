@@ -6,12 +6,11 @@ import { CardSkeleton, EmptyState, ErrorState, StatTilesSkeleton } from '@/compo
 import { TimeAgo } from '@/components/common/TimeAgo'
 import { Button } from '@/components/ui/button'
 import { useDeviceAnalytics } from '@/features/analytics/hooks'
-import { METRICS, type MetricKey, type MetricSpec } from '@/features/telemetry/thresholds'
+import { formatThreshold, type MetricKey, type MetricSpec } from '@/features/telemetry/thresholds'
+import { useDeviceMetrics } from '@/features/telemetry/use-device-metrics'
 import { formatDateTime, formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { DeviceAnalyticsResponse } from '@/types/api'
-
-const spec = (key: MetricKey) => METRICS.find((m) => m.key === key)!
 
 /** Horizontal 0–100 meter with the alert threshold marked. */
 function PercentMeter({ metric, value }: { metric: MetricSpec; value: number }) {
@@ -58,8 +57,7 @@ function AverageRow({ icon, metric, value }: { icon: ReactNode; metric: MetricSp
 }
 
 /** Min ↔ max temperature span with the average and the alert threshold marked. */
-function TemperatureRange({ data }: { data: DeviceAnalyticsResponse }) {
-  const t = spec('temperature')
+function TemperatureRange({ data, t }: { data: DeviceAnalyticsResponse; t: MetricSpec }) {
   const min = data.minimum_temperature
   const max = data.maximum_temperature
   const avg = data.average_temperature
@@ -100,7 +98,7 @@ function TemperatureRange({ data }: { data: DeviceAnalyticsResponse }) {
       <div className="relative mt-1 h-4 text-[11px] text-muted-foreground" aria-hidden="true">
         <span className="absolute left-0">{lo} °C</span>
         <span className="absolute -translate-x-1/2 text-status-critical" style={{ left: pos(t.threshold) }}>
-          {t.threshold} °C alert
+          {formatThreshold(t.threshold)} °C alert
         </span>
         <span className="absolute right-0">{hi} °C</span>
       </div>
@@ -129,6 +127,8 @@ function TemperatureRange({ data }: { data: DeviceAnalyticsResponse }) {
  */
 export function AnalyticsPanel({ deviceId, onViewTelemetry }: { deviceId: number; onViewTelemetry?: () => void }) {
   const query = useDeviceAnalytics(deviceId)
+  const metrics = useDeviceMetrics(deviceId)
+  const spec = (key: MetricKey) => metrics.find((m) => m.key === key)!
 
   if (query.isPending) {
     return (
@@ -227,7 +227,7 @@ export function AnalyticsPanel({ deviceId, onViewTelemetry }: { deviceId: number
             Temperature envelope
           </h2>
           <p className="mb-5 text-xs text-muted-foreground">All-time minimum, average and maximum</p>
-          <TemperatureRange data={data} />
+          <TemperatureRange data={data} t={spec('temperature')} />
         </section>
 
         <section className="surface p-5" aria-labelledby="resource-avg-heading">

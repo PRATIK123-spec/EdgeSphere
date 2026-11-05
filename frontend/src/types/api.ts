@@ -64,6 +64,27 @@ export interface DeviceResponse {
   created_at: ApiDateTime
   /** Non-secret identifier of the current key, e.g. "edg_1a2b3c4d" */
   key_prefix: string
+  /** Effective alert thresholds (per-device overrides merged with defaults) */
+  alert_thresholds: AlertThresholdValues
+}
+
+/** app/schemas/device.py → AlertThresholdValues. Alert above *_max, below battery_min. */
+export interface AlertThresholdValues {
+  temperature_max: number
+  battery_min: number
+  cpu_max: number
+  ram_max: number
+}
+
+/** app/schemas/device.py → DeviceThresholdsUpdate (PUT body; null = use default) */
+export type DeviceThresholdsUpdate = { [K in keyof AlertThresholdValues]: number | null }
+
+/** app/schemas/device.py → DeviceThresholdsResponse */
+export interface DeviceThresholdsResponse {
+  device_id: number
+  effective: AlertThresholdValues
+  overrides: DeviceThresholdsUpdate
+  defaults: AlertThresholdValues
 }
 
 /** app/schemas/device.py → DeviceProvisionResponse (POST /devices/ and POST /devices/{id}/rotate-key only) */

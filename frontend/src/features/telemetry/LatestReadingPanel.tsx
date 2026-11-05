@@ -5,6 +5,7 @@ import { TimeAgo } from '@/components/common/TimeAgo'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLatestTelemetry, LIVE_POLL_MS } from '@/features/telemetry/hooks'
 import { METRICS, type MetricKey } from '@/features/telemetry/thresholds'
+import { useDeviceMetrics } from '@/features/telemetry/use-device-metrics'
 import { formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -23,6 +24,7 @@ function meterPercent(value: number): number {
 export function LatestReadingPanel({ deviceId }: { deviceId: number }) {
   const query = useLatestTelemetry(deviceId)
   const reading = query.data
+  const metrics = useDeviceMetrics(deviceId)
 
   return (
     <section className="surface p-5" aria-labelledby="latest-reading-heading">
@@ -63,7 +65,7 @@ export function LatestReadingPanel({ deviceId }: { deviceId: number }) {
         />
       ) : (
         <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {METRICS.map((metric) => {
+          {metrics.map((metric) => {
             const value = reading[metric.key]
             const breached = metric.breached(value)
             const Icon = ICONS[metric.key]

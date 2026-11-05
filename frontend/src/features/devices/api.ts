@@ -1,5 +1,11 @@
 import { apiRequest } from '@/lib/api-client'
-import type { DeviceCreate, DeviceProvisionResponse, DeviceResponse } from '@/types/api'
+import type {
+  DeviceCreate,
+  DeviceProvisionResponse,
+  DeviceResponse,
+  DeviceThresholdsResponse,
+  DeviceThresholdsUpdate,
+} from '@/types/api'
 
 /** GET /devices/ — devices owned by the current user. Trailing slash is required. */
 export function fetchDevices(signal?: AbortSignal): Promise<DeviceResponse[]> {
@@ -25,6 +31,19 @@ export function createDevice(data: DeviceCreate): Promise<DeviceProvisionRespons
 /** PUT /devices/{id} — full DeviceCreate body; status and firmware are not editable. */
 export function updateDevice(id: number, data: DeviceCreate): Promise<DeviceResponse> {
   return apiRequest<DeviceResponse>(`/devices/${id}`, {
+    method: 'PUT',
+    body: { json: data },
+  })
+}
+
+/** GET /devices/{id}/thresholds — effective values, the device's overrides and the defaults. */
+export function fetchDeviceThresholds(id: number, signal?: AbortSignal): Promise<DeviceThresholdsResponse> {
+  return apiRequest<DeviceThresholdsResponse>(`/devices/${id}/thresholds`, { signal })
+}
+
+/** PUT /devices/{id}/thresholds — replaces all four overrides; null = use the default. */
+export function updateDeviceThresholds(id: number, data: DeviceThresholdsUpdate): Promise<DeviceThresholdsResponse> {
+  return apiRequest<DeviceThresholdsResponse>(`/devices/${id}/thresholds`, {
     method: 'PUT',
     body: { json: data },
   })

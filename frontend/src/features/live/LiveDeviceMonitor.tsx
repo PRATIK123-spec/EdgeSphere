@@ -14,7 +14,8 @@ import { useRealtimeEvents, useRealtimeLive } from '@/features/realtime/realtime
 import { LIVE_POLL_MS, useLatestTelemetry, useRecentTelemetry } from '@/features/telemetry/hooks'
 import { MetricChart, MetricChartLegend } from '@/features/telemetry/MetricChart'
 import { buildSeries, metricStats, toReadings } from '@/features/telemetry/series'
-import { METRICS, type MetricKey } from '@/features/telemetry/thresholds'
+import { METRICS, type MetricKey, type MetricSpec } from '@/features/telemetry/thresholds'
+import { useDeviceMetrics } from '@/features/telemetry/use-device-metrics'
 import { formatNumber, parseApiDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { DeviceResponse, RealtimeEvent } from '@/types/api'
@@ -56,7 +57,7 @@ function Tag({ children, className }: { children: ReactNode; className?: string 
 }
 
 /** One stream row: fixed-width type tag, body, time — scannable down the left edge. */
-function FeedRow({ item }: { item: FeedItem }) {
+function FeedRow({ item, metrics }: { item: FeedItem; metrics: MetricSpec[] }) {
   const { event } = item
   let tag: ReactNode = null
   let body: ReactNode = null
@@ -66,7 +67,7 @@ function FeedRow({ item }: { item: FeedItem }) {
     tag = <Tag className="text-muted-foreground">READING</Tag>
     body = (
       <span className="grid grid-cols-2 gap-x-3 gap-y-0.5 font-mono tabular-nums sm:grid-cols-4">
-        {METRICS.map((m) => {
+        {metrics.map((m) => {
           const value = event.data[m.key]
           return (
             <span key={m.key} className={cn(m.breached(value) ? 'font-semibold text-status-critical' : 'text-foreground/90')}>
@@ -117,6 +118,7 @@ export function LiveDeviceMonitor({ device }: { device: DeviceResponse }) {
   const live = useRealtimeLive()
   const latest = useLatestTelemetry(device.id)
   const recent = useRecentTelemetry(device.id, WINDOW)
+  const metrics = useDeviceMetrics(device.id)
   const [feed, setFeed] = useState<FeedItem[]>([])
   const [received, setReceived] = useState(0)
   const [filter, setFilter] = useState<FeedFilter>('all')
@@ -183,7 +185,7 @@ export function LiveDeviceMonitor({ device }: { device: DeviceResponse }) {
             />
           ) : (
             <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-live="polite" aria-atomic="false">
-              {METRICS.map((metric) => {
+              {metrics.map((metric) => {
                 const value = reading[metric.key]
                 const breached = metric.breached(value)
                 const Icon = ICONS[metric.key]
@@ -236,7 +238,7 @@ export function LiveDeviceMonitor({ device }: { device: DeviceResponse }) {
             </p>
           ) : (
             <div className="grid gap-x-6 gap-y-5 md:grid-cols-2">
-              {METRICS.map((spec) => (
+              {metrics.map((spec) => (
                 <div key={spec.key}>
                   <div className="mb-1 text-xs font-medium text-muted-foreground">{spec.label}</div>
                   <MetricChart spec={spec} points={series.points} stats={metricStats(readings, spec.key)} height={140} />
@@ -296,7 +298,7 @@ export function LiveDeviceMonitor({ device }: { device: DeviceResponse }) {
           ) : (
             <ol className="mt-2 max-h-[28rem] divide-y overflow-y-auto pr-1" aria-label="Live events" aria-live={frozen ? 'off' : 'polite'}>
               {shown.map((item) => (
-                <FeedRow key={item.key} item={item} />
+                <FeedRow key={item.key} item={item} metrics={metrics} />
               ))}
             </ol>
           )}

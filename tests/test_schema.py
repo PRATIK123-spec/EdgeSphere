@@ -18,6 +18,11 @@ EXPECTED_DEVICE_COLUMNS = {
     "owner_id",
     "last_seen",
     "created_at",
+    # Per-device alert threshold overrides (migration 0007); NULL = default.
+    "alert_temperature_max",
+    "alert_battery_min",
+    "alert_cpu_max",
+    "alert_ram_max",
 }
 
 

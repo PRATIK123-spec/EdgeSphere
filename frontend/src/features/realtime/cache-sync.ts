@@ -57,6 +57,7 @@ export function applyRealtimeEvent(queryClient: QueryClient, event: RealtimeEven
     case 'device.updated': {
       queryClient.setQueryData(deviceKeys.detail(event.device_id), event.data)
       invalidateSoon(queryClient, deviceKeys.list())
+      invalidateSoon(queryClient, deviceKeys.thresholds(event.device_id))
       invalidateSoon(queryClient, dashboardKeys.summary())
       break
     }

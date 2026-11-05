@@ -8,6 +8,8 @@ from app.schemas.device import (
     DeviceCreate,
     DeviceProvisionResponse,
     DeviceResponse,
+    DeviceThresholdsResponse,
+    DeviceThresholdsUpdate,
     DeviceUpdate,
 )
 from app.services import device_service
@@ -96,6 +98,41 @@ def patch_device(
     return device_service.update_device(
         device_id,
         device,
+        db,
+        current_user
+    )
+
+
+@router.get(
+    "/{device_id}/thresholds",
+    response_model=DeviceThresholdsResponse
+)
+def get_device_thresholds(
+    device_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return device_service.get_thresholds(
+        device_id,
+        db,
+        current_user
+    )
+
+
+@router.put(
+    "/{device_id}/thresholds",
+    response_model=DeviceThresholdsResponse
+)
+def update_device_thresholds(
+    device_id: int,
+    thresholds: DeviceThresholdsUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Replace all four overrides; omitted or null fields reset to the default."""
+    return device_service.update_thresholds(
+        device_id,
+        thresholds,
         db,
         current_user
     )

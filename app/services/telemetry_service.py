@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.alert_thresholds import effective_thresholds
 from app.models.device import Device
 from app.models.telemetry import Telemetry
 from app.models.user import User
@@ -59,7 +60,8 @@ def create_telemetry(
     alerts = alert_service.evaluate_reading(
         device.id,
         created,
-        db
+        db,
+        effective_thresholds(device),
     )
 
     owner_id = device.owner_id

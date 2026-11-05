@@ -6,7 +6,7 @@ import { acknowledgeAlert, fetchAlerts, resolveAlert, type AlertQueryParams } fr
 import { dashboardKeys } from '@/features/dashboard/hooks'
 import { useRealtimeLive } from '@/features/realtime/realtime-context'
 import { useLatestTelemetry } from '@/features/telemetry/hooks'
-import { METRICS } from '@/features/telemetry/thresholds'
+import { useDeviceMetrics } from '@/features/telemetry/use-device-metrics'
 import { getErrorMessage, isApiError } from '@/lib/api-client'
 import { invalidateSoon } from '@/lib/query-client'
 import type { AlertResponse, Page } from '@/types/api'
@@ -83,6 +83,7 @@ export function useRefreshAlertsOnBreach(deviceId: number) {
   const queryClient = useQueryClient()
   const live = useRealtimeLive()
   const latest = useLatestTelemetry(deviceId)
+  const metrics = useDeviceMetrics(deviceId)
   const seenId = useRef<number | null>(null)
 
   useEffect(() => {
@@ -91,8 +92,8 @@ export function useRefreshAlertsOnBreach(deviceId: number) {
     const previous = seenId.current
     seenId.current = reading.id
     if (live || previous === null || reading.id === previous) return
-    if (METRICS.some((m) => m.breached(reading[m.key]))) {
+    if (metrics.some((m) => m.breached(reading[m.key]))) {
       void queryClient.invalidateQueries({ queryKey: alertKeys.all })
     }
-  }, [latest.data, live, queryClient])
+  }, [latest.data, live, queryClient, metrics])
 }

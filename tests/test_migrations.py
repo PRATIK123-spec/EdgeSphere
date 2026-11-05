@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 pytestmark = pytest.mark.skipif(not ADMIN_URL, reason="EDGESPHERE_MIGRATION_TEST_PG_URL not set")
 
-HEAD = "0006_alert_lifecycle"
+HEAD = "0007_device_alert_thresholds"
 
 
 @contextmanager
@@ -122,6 +122,12 @@ def test_existing_database_upgrade_preserves_and_repairs_data():
             alert = c.execute(text("SELECT status, telemetry_id FROM alerts")).one()
             assert alert.status == "active" and alert.telemetry_id is None
             assert c.execute(text("SELECT bool_and(alerts_evaluated) FROM telemetry")).scalar_one() is True
+            # Existing devices keep the default thresholds (NULL overrides).
+            assert all(
+                d.alert_temperature_max is None and d.alert_battery_min is None
+                and d.alert_cpu_max is None and d.alert_ram_max is None
+                for d in devices.values()
+            )
         engine.dispose()
 
 

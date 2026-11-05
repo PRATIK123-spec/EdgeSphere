@@ -1,11 +1,18 @@
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.alert_thresholds import DEFAULT_THRESHOLDS, DEVICE_COLUMNS, device_overrides, effective_thresholds
 from app.models.device import Device
 from app.models.user import User
 from app.realtime import events
 from app.repositories import device_repository
-from app.schemas.device import DeviceCreate, DeviceProvisionResponse, DeviceUpdate
+from app.schemas.device import (
+    DeviceCreate,
+    DeviceProvisionResponse,
+    DeviceThresholdsResponse,
+    DeviceThresholdsUpdate,
+    DeviceUpdate,
+)
 from app.utils.device_identity import (
     generate_device_key,
     generate_serial_number,
@@ -113,6 +120,43 @@ def update_device(
     events.publish_device(current_user.id, updated, kind="updated")
 
     return updated
+
+
+def _thresholds_response(device: Device) -> DeviceThresholdsResponse:
+    return DeviceThresholdsResponse(
+        device_id=device.id,
+        effective=effective_thresholds(device).as_dict(),
+        overrides=device_overrides(device),
+        defaults=DEFAULT_THRESHOLDS.as_dict(),
+    )
+
+
+def get_thresholds(
+    device_id: int,
+    db: Session,
+    current_user: User
+) -> DeviceThresholdsResponse:
+    return _thresholds_response(require_owned_device(device_id, current_user, db))
+
+
+def update_thresholds(
+    device_id: int,
+    data: DeviceThresholdsUpdate,
+    db: Session,
+    current_user: User
+) -> DeviceThresholdsResponse:
+    """Replace the device's alert threshold overrides (None = default).
+    Applies to readings ingested from now on; existing alerts are unchanged."""
+    device = require_owned_device(device_id, current_user, db)
+
+    for name, column in DEVICE_COLUMNS.items():
+        setattr(device, column, getattr(data, name))
+
+    updated = device_repository.update_device(device, db)
+
+    events.publish_device(current_user.id, updated, kind="updated")
+
+    return _thresholds_response(updated)
 
 
 def rotate_device_key(

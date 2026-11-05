@@ -12,7 +12,8 @@
 
 - **Device management**: register, edit, and delete devices; each device gets a one-time API key (stored as a SHA-256 hash) that can be rotated
 - **Telemetry ingestion**: devices push temperature, battery, CPU, and RAM readings authenticated by `X-DEVICE-KEY`
-- **Alerting engine**: rule-based alerts (temperature > 70 °C, battery < 20 %, CPU/RAM > 90 %) with cooldown, severity, and an acknowledge → resolve lifecycle
+- **Alerting engine**: rule-based alerts (defaults: temperature > 70 °C, battery < 20 %, CPU/RAM > 90 %) with cooldown, severity, and an acknowledge → resolve lifecycle
+- **Per-device thresholds**: override any threshold per device on its detail page; charts draw each device's own threshold lines
 - **Real-time updates**: authenticated WebSocket pushes telemetry, device status, and alert events to the dashboard
 - **Offline detection**: a background monitor marks devices offline when they stop reporting
 - **Analytics & dashboard**: fleet summary, per-device insights, and down-sampled time series for charts
@@ -102,6 +103,7 @@ proxies `/api` to the API and live-reloads `frontend/` edits. Backend code chang
 | `0004_device_last_seen_nullable` | `devices.last_seen` is `NULL` until the first reading; repairs existing rows from real telemetry |
 | `0005_hash_device_keys` | `key_hash` + `key_prefix` replace plaintext `device_key` |
 | `0006_alert_lifecycle` | alert `status`/`acknowledged_at`/`resolved_at`/`telemetry_id`; idempotent evaluation; alert indexes |
+| `0007_device_alert_thresholds` | nullable per-device `alert_temperature_max`/`alert_battery_min`/`alert_cpu_max`/`alert_ram_max` (NULL = default) with range CHECKs |
 
 ## Configuration (`.env`)
 
@@ -118,7 +120,7 @@ Telemetry ingest authenticates the **device** with `X-DEVICE-KEY` instead.
 | Area | Endpoints |
 |---|---|
 | Auth | `POST /auth/register`, `POST /auth/login` (form), `GET /users/me` |
-| Devices | `GET/POST /devices/`, `GET/PUT/PATCH/DELETE /devices/{id}`, `POST /devices/{id}/rotate-key` |
+| Devices | `GET/POST /devices/`, `GET/PUT/PATCH/DELETE /devices/{id}`, `POST /devices/{id}/rotate-key`, `GET/PUT /devices/{id}/thresholds` |
 | Telemetry | `POST /telemetry/` (device key), `GET /telemetry/latest/{id}`, `GET /telemetry/{id}?limit&offset&since&until`, `GET /telemetry/{id}/series?since&until&max_points`, `DELETE /telemetry/{reading_id}` |
 | Alerts | `GET /alerts/?device_id&severity&alert_type&status&since&until&limit&offset`, `GET /alerts/{device_id}` (same filters), `POST /alerts/{id}/acknowledge`, `POST /alerts/{id}/resolve`, `POST /alerts/check/{device_id}` |
 | Analytics | `GET /analytics/device/{id}` |
@@ -188,7 +190,6 @@ labels, not server device IDs.
 ## Future Work
 
 - Replace the in-process WebSocket hub with a shared broker (e.g. Redis pub/sub) so the API can run multiple workers
-- Make alert thresholds configurable per device
 
 ## License
 
