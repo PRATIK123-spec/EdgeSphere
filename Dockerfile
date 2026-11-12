@@ -2,7 +2,7 @@
 # Production runs on Render's native Python runtime (render.yaml), not this image.
 # No secrets are baked in: configuration comes from the environment at runtime.
 
-FROM python:3.12-slim
+FROM python:3.15-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
